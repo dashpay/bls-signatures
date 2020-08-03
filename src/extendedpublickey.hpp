@@ -75,7 +75,16 @@ class ExtendedPublicKey {
     void Serialize(uint8_t *buffer) const;
     std::vector<uint8_t> Serialize() const;
 
- private:
+    // Blank public constructor
+    ExtendedPublicKey()
+            : version(0),
+              depth(0),
+              parentFingerprint(0),
+              childNumber(0),
+              chainCode(ChainCode()),
+              pk(PublicKey()) {}
+
+private:
     // private constructor, force use of static methods
     explicit ExtendedPublicKey(const uint32_t v, const uint8_t d,
                                const uint32_t pfp, const uint32_t cn,
