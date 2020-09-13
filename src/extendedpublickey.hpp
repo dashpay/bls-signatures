@@ -96,13 +96,13 @@ private:
           chainCode(code),
           pk(key) {}
 
-    const uint32_t version;
-    const uint8_t depth;
-    const uint32_t parentFingerprint;
-    const uint32_t childNumber;
+    uint32_t version;
+    uint8_t depth;
+    uint32_t parentFingerprint;
+    uint32_t childNumber;
 
-    const ChainCode chainCode;
-    const PublicKey pk;
+    ChainCode chainCode;
+    PublicKey pk;
 };
 } // end namespace bls
 
