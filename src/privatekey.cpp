@@ -77,6 +77,18 @@ PrivateKey PrivateKey::FromByteVector(const std::vector<uint8_t> bytes, bool mod
     return PrivateKey::FromBytes(Bytes(bytes), modOrder);
 }
 
+// Construct a private key from a bytearray.
+PrivateKey PrivateKey::RandomPrivateKey()
+{
+    uint8_t buf[32];
+    bn_t r;
+    bn_new(r);
+    bn_rand(r, RLC_POS, 256);
+    bn_write_bin(buf, 32, r);
+    std::vector<uint8_t> ret(buf, buf + 32);
+    return PrivateKey::FromBytes(Bytes(ret), true);
+}
+
 PrivateKey::PrivateKey() {
     AllocateKeyData();
 };
@@ -158,6 +170,11 @@ const G2Element& PrivateKey::GetG2Element() const
         fG2CacheValid = true;
     }
     return g2Cache;
+}
+
+bool PrivateKey::HasKeyData() const
+{
+    return (keydata != nullptr);
 }
 
 G1Element operator*(const G1Element &a, const PrivateKey &k)
