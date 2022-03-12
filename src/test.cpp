@@ -121,6 +121,13 @@ TEST_CASE("class PrivateKey") {
         REQUIRE_THROWS(PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), false));
         REQUIRE_NOTHROW(PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true));
     }
+    SECTION("BIP32 Seed") {
+        uint8_t aliceSeed[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        PrivateKey pk1 = PrivateKey::FromSeedBIP32(Bytes(aliceSeed, 10));
+        vector<uint8_t> privateKey = pk1.Serialize(true);
+        vector<uint8_t> knownPrivateKey = Util::HexToBytes("46891c2cec49593c81921e473db7480029e0fc1eb933c6b93d81f5370eb19fbd");
+        REQUIRE(privateKey == knownPrivateKey);
+    }
     SECTION("keydata checks") {
         PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
         G1Element g1 = pk1.GetG1Element();
