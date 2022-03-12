@@ -19,6 +19,35 @@ namespace bls {
 
 const size_t PrivateKey::PRIVATE_KEY_SIZE;
 
+PrivateKey PrivateKey::FromSeedBIP32(const Bytes& seed) {
+    // "BLS private key seed" in ascii
+    const uint8_t hmacKey[] = {66, 76, 83, 32, 112, 114, 105, 118, 97, 116, 101,
+                               32, 107, 101, 121, 32, 115, 101, 101, 100};
+
+    auto* hash = Util::SecAlloc<uint8_t>(
+        PrivateKey::PRIVATE_KEY_SIZE);
+
+    // Hash the seed into sk
+    md_hmac(hash, seed.begin(), (int)seed.size(), hmacKey, sizeof(hmacKey));
+
+    bn_t order;
+    bn_new(order);
+    g1_get_ord(order);
+
+    // Make sure private key is less than the curve order
+    bn_t* skBn = Util::SecAlloc<bn_t>(1);
+    bn_new(*skBn);
+    bn_read_bin(*skBn, hash, PrivateKey::PRIVATE_KEY_SIZE);
+    bn_mod_basic(*skBn, *skBn, order);
+
+    PrivateKey k;
+    bn_copy(k.keydata, *skBn);
+
+    Util::SecFree(skBn);
+    Util::SecFree(hash);
+    return k;
+}
+
 // Construct a private key from a bytearray.
 PrivateKey PrivateKey::FromBytes(const Bytes& bytes, bool modOrder)
 {
