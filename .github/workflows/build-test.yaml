@@ -2,6 +2,11 @@ name:  Build and Test C++, Javascript, and Python
 
 on: [push, pull_request]
 
+concurrency:
+  # SHA is added to the end if on `main` to let all main workflows run
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main') && github.sha || '' }}
+  cancel-in-progress: true
+
 jobs:
   build_wheels:
     name: Build and Test on ${{ matrix.os }} CPython ${{ matrix.python }}
@@ -20,7 +25,7 @@ jobs:
         access_token: ${{ github.token }}
 
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - uses: actions/setup-python@v2
       name: Install Python
@@ -62,7 +67,7 @@ jobs:
         python python-impl/impl-test.py
 
     - name: Install emsdk
-      uses: mymindstorm/setup-emsdk@v9
+      uses: mymindstorm/setup-emsdk@v11
 
     - name: Test javascript bindings
       run: |
