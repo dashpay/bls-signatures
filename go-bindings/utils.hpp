@@ -23,6 +23,7 @@
 template <class T>
 std::vector<T> toBLSVector(void** elems, const size_t len) {
     std::vector<T> vec;
+    vec.reserve(len);
     for (int i = 0 ; i < len; ++i) {
         const T* el = (T*)elems[i];
         vec.push_back(*el);

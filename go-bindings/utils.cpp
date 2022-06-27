@@ -21,6 +21,7 @@
 template <class T>
 std::vector<T> toBLSVector(void** elems, const size_t len) {
     std::vector<T> vec;
+    vec.reserve(len);
     for (int i = 0 ; i < len; ++i) {
         T* el = (T*)elems[i];
         vec.push_back(*el);
@@ -30,6 +31,7 @@ std::vector<T> toBLSVector(void** elems, const size_t len) {
 
 std::vector<bls::Bytes> toVectorBytes(void** elems, const size_t len, const std::vector<size_t> vecElemsLens) {
     std::vector<bls::Bytes> vec;
+    vec.reserve(len);
     for (int i = 0 ; i < len; ++i) {
         uint8_t* elPtr = (uint8_t*)elems[i];
         vec.push_back(bls::Bytes(elPtr, vecElemsLens[i]));

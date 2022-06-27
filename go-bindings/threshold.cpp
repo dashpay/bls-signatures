@@ -24,6 +24,7 @@
 
 std::vector<bls::Bytes> toVectorHashes(void** elems, const size_t len) {
     std::vector<bls::Bytes> vec;
+    vec.reserve(len);
     for (int i = 0 ; i < len; ++i) {
         vec.push_back(
             bls::Bytes((uint8_t*)elems[i], HashSize)
