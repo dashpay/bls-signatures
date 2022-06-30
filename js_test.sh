@@ -3,6 +3,7 @@
 YARN=yarn
 if which yarn >/dev/null ; then
     YARN=yarn
+    yarn config set registry https://registry.npmjs.org
 else
     if which npm >/dev/null ; then
         YARN=npm
