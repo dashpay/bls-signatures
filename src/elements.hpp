@@ -46,7 +46,7 @@ public:
     static G1Element FromMessage(const std::vector<uint8_t> &message,
                                  const uint8_t *dst,
                                  int dst_len);
-    static G1Element FromMessage(const Bytes& message,
+    static G1Element FromMessage(Bytes message,
                                  const uint8_t* dst,
                                  int dst_len);
     static G1Element Generator();
@@ -87,7 +87,7 @@ public:
                                  const uint8_t* dst,
                                  int dst_len,
                                  bool fLegacy = false);
-    static G2Element FromMessage(const Bytes& message,
+    static G2Element FromMessage(Bytes message,
                                  const uint8_t* dst,
                                  int dst_len,
                                  bool fLegacy = false);
