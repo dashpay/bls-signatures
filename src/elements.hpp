@@ -115,7 +115,8 @@ private:
 class GTElement {
 public:
     static const size_t SIZE = 384;
-    static GTElement FromBytes(const Bytes& bytes);
+    static GTElement FromBytes(Bytes bytes);
+    static GTElement FromBytesUnchecked(Bytes bytes);
     static GTElement FromByteVector(const std::vector<uint8_t> &bytevec);
     static GTElement FromNative(const gt_t *element);
     static GTElement Unity();  // unity
