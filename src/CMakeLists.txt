@@ -39,21 +39,12 @@ install(FILES ${HEADERS} DESTINATION include/bls-dash)
 install(FILES $<TARGET_FILE:bls-dash> DESTINATION lib)
 
 if(BUILD_BLS_TESTS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/CMakeLists.txt)
+
   add_executable(runtest test.cpp)
-  INCLUDE(FindPkgConfig)
-  pkg_check_modules(CATCH2 catch2)
-  if (CATCH2_FOUND)
-    # Adding "catch2" subdir to include dirs because "catch.hpp" is included
-    # instead of "catch2/catch.hpp"
-    if (NOT CATCH2_INCLUDE_DIRS)
-      set(CATCH2_INCLUDE_DIRS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
-    endif()
-    list(TRANSFORM CATCH2_INCLUDE_DIRS APPEND /catch2)
-    target_include_directories(runtest PRIVATE ${CATCH2_INCLUDE_DIRS})
-  else()
-    target_include_directories(runtest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/include/catch2)
-  endif()
-  target_link_libraries(runtest PRIVATE bls-dash)
+  target_link_libraries(runtest
+                        PRIVATE bls-dash
+                        PRIVATE catch2)
 endif()
 
 if(BUILD_BLS_BENCHMARKS)

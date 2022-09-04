@@ -17,7 +17,8 @@
 #include <thread>
 
 #include "bls.hpp"
-#include "catch.hpp"
+#include <catch2/catch.hpp>
+
 extern "C" {
 #include "relic.h"
 }
