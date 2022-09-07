@@ -24,13 +24,13 @@ target_include_directories(bls-dash
 
 target_compile_definitions(bls-dash
   PRIVATE
-    BLSALLOC_SODIUM=1
+    BLSALLOC_MINIALLOC=1
 )
 
 target_link_libraries(bls-dash
   PUBLIC
     relic_s
-    sodium
+    minialloc
 )
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include/ DESTINATION include/bls-dash)
