@@ -174,6 +174,87 @@ AC_DEFINE([CTAIA],   [7], [Constant-time version of almost inverse.])
 AC_DEFINE([B2S256],  [7], [BLAKE2s-256 hash function.])
 AC_DEFINE([LOWER],   [8], [Use implementation provided by the lower layer.])
 
+dnl Define relic switches
+AC_ARG_ENABLE([debug],
+  [AS_HELP_STRING([--enable-debug],
+  [Build with debugging support (default is no)])],
+  [use_debug=$enableval],
+  [use_debug=no])
+
+if test x$use_debug = xyes; then
+  AC_DEFINE([DEBUG],   [1], [Define this symbol if debugging support is enabled])
+fi
+
+AC_ARG_ENABLE([profiling],
+  [AS_HELP_STRING([--enable-profiling],
+  [Build with profiling support (default is no)])],
+  [use_profiling=$enableval],
+  [use_profiling=no])
+
+if test x$use_profiling = xyes; then
+  AC_DEFINE([PROFL],   [1], [Define this symbol if profiling support is enabled])
+fi
+
+AC_ARG_ENABLE([check],
+  [AS_HELP_STRING([--enable-check],
+  [Build with error-checking support (default is no)])],
+  [use_check=$enableval],
+  [use_check=no])
+
+if test x$use_check = xyes; then
+  AC_DEFINE([CHECK],   [1], [Define this symbol if error-checking support is enabled])
+fi
+
+AC_ARG_ENABLE([verbs],
+  [AS_HELP_STRING([--enable-verbs],
+  [Build with detailed error messages (default is no)])],
+  [use_verbs=$enableval],
+  [use_verbs=no])
+
+if test x$use_verbs = xyes; then
+  AC_DEFINE([VERBS],   [1], [Define this symbol if detailed error messages are enabled])
+fi
+
+AC_ARG_ENABLE([overhead],
+  [AS_HELP_STRING([--enable-overhead],
+  [Build with overhead estimation (default is no)])],
+  [use_overhead=$enableval],
+  [use_overhead=no])
+
+if test x$use_overhead = xyes; then
+  AC_DEFINE([OVERH],   [1], [Define this symbol if overhead estimation is enabled])
+fi
+
+AC_ARG_ENABLE([quiet],
+  [AS_HELP_STRING([--enable-quiet],
+  [Build with printing disabled (default is yes)])],
+  [use_quiet=$enableval],
+  [use_quiet=yes])
+
+if test x$use_quiet = xyes; then
+  AC_DEFINE([QUIET],   [1], [Define this symbol if printing is disabled])
+fi
+
+AC_ARG_ENABLE([color],
+  [AS_HELP_STRING([--enable-color],
+  [Build with colored output support (default is yes)])],
+  [use_color=$enableval],
+  [use_color=yes])
+
+if test x$use_color = xyes; then
+  AC_DEFINE([COLOR],   [1], [Define this symbol if colored output is enabled])
+fi
+
+AC_ARG_ENABLE([big_endian],
+  [AS_HELP_STRING([--enable-big-endian],
+  [Build with big-endian support (default is no)])],
+  [use_big_endian=$enableval],
+  [use_big_endian=no])
+
+if test x$use_big_endian = xyes; then
+  AC_DEFINE([BIGED],   [0], [Define this symbol if big-endian support is enabled])
+fi
+
 use_pkgconfig=yes
 case $host in
   *darwin*)
