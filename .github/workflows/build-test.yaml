@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build_wheels:
-    name: Build and Test on ${{ matrix.os }} CPython ${{ matrix.python }}
+    name: ${{ matrix.os }} (Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -34,7 +34,7 @@ jobs:
       with:
         python-version: ${{ matrix.python }}
 
-    - name: Ubuntu build C++ and test with valgrind
+    - name: Prepare build system for Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get update
@@ -43,35 +43,39 @@ jobs:
         sudo snap install cmake --classic
         hash -r
         cmake --version
-        mkdir -p build
-        cd build
-        cmake ../
-        cmake --build . -- -j 6
-        echo "Running ./src/runtest"
-        ./src/runtest
-        valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all  ./src/runtest
 
-    - name: Mac OS build C++ and test
+    - name: Prepare build system for macOS
       if: startsWith(matrix.os, 'macos')
       run: |
         ls -l
         export MACOSX_DEPLOYMENT_TARGET=10.14
+
+    - name: Build library using CMake
+      run: |
         mkdir -p build
         ls -l build
         cd build
         cmake ../
         cmake --build . -- -j 6
+
+    - name: Run tests with CMake build
+      run: |
+        cd build
         echo "Running ./src/runtest"
         ./src/runtest
 
-    - name: Test pure python implementation
+    - name: Run valgrind on Ubuntu
+      if: startsWith(matrix.os, 'ubuntu')
+      run: cd build && valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all  ./src/runtest
+
+    - name: Test pure Python implementation
       run: |
         python python-impl/impl-test.py
 
     - name: Install emsdk
       uses: mymindstorm/setup-emsdk@v11
 
-    - name: Test javascript bindings
+    - name: Test JavaScript bindings
       run: |
         emcc -v
         sh emsdk_build.sh
@@ -81,7 +85,7 @@ jobs:
       with:
         go-version: "^1.17"
 
-    - name: Test go bindings
+    - name: Test Go bindings
       run: |
         cd go-bindings
         make
