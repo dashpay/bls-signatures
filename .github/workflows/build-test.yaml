@@ -17,13 +17,18 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }}, ${{ matrix.compiler.cc }}, ${{ matrix.backend }} backend
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
-
+        os: [ macos-11, ubuntu-20.04 ]
+        compiler:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+        backend: [ easy, gmp ]
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -43,21 +48,18 @@ jobs:
       run: |
         ls -l
         export MACOSX_DEPLOYMENT_TARGET=10.14
+        brew install autoconf automake gmp
 
     - name: Build library using CMake
       run: |
-        mkdir -p build
-        ls -l build
-        cd build
-        cmake .. -DBUILD_BLS_PYTHON_BINDINGS=0
+        mkdir -p build && cd build
+        CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake .. -DBUILD_BLS_PYTHON_BINDINGS=0 -DARITH=${{ matrix.backend }}
         cmake --build . -- -j 6
+        mv src/runtest ..
 
-    - name: Run tests with CMake build
-      run: |
-        cd build
-        echo "Running ./src/runtest"
-        ./src/runtest
+    - name: Run tests
+      run: ./runtest
 
     - name: Run valgrind on Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
-      run: cd build && valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all  ./src/runtest
+      run: valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all ./runtest
