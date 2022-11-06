@@ -15,7 +15,19 @@
 # Copyright (c) 2016 Jack Poulson, <jack.poulson@gmail.com>
 # Redistribution and use is allowed according to the terms of the BSD license.
 
-find_path(GMP_INCLUDES NAMES gmp.h PATHS $ENV{GMPDIR} ${INCLUDE_INSTALL_DIR})
+include(BrewHelper)
+find_brew_prefix(_GMP_BREW_HINT gmp)
+
+find_path(GMP_INCLUDES
+  NAMES
+    gmp.h
+  PATHS
+    $ENV{GMPDIR} ${INCLUDE_INSTALL_DIR}
+  PATH_SUFFIXES
+    include
+  HINTS
+    ${_GMP_BREW_HINT}
+)
 
 # Set GMP_FIND_VERSION to 5.1.0 if no minimum version is specified
 if(NOT GMP_FIND_VERSION)
@@ -77,6 +89,10 @@ endif()
 find_library(GMP_LIBRARIES
   NAMES
     ${_gmp_lib_name} gmp.lib libgmp-10 libgmp gmp
+  HINTS
+    ${_GMP_BREW_HINT}
+  INCLUDE_DIRS
+    ${GMP_INCLUDES}
   PATHS
     $ENV{GMPDIR} ${LIB_INSTALL_DIR}
 )
