@@ -283,6 +283,13 @@ RELIC_SOURCES += \
 	depends/relic/src/rand/relic_rand_rdrnd.c \
 	depends/relic/src/rand/relic_rand_udev.c
 
+if WITH_DV
+RELIC_SOURCES += \
+	depends/relic/src/dv/relic_dv_mem.c \
+	depends/relic/src/dv/relic_dv_util.c
+endif
+
+if ARITH_EASY
 if WITH_BN
 RELIC_SOURCES += $(BN_SOURCES) \
 	depends/relic/src/low/easy/relic_bn_add_low.c \
@@ -291,12 +298,6 @@ RELIC_SOURCES += $(BN_SOURCES) \
 	depends/relic/src/low/easy/relic_bn_mul_low.c \
 	depends/relic/src/low/easy/relic_bn_shift_low.c \
 	depends/relic/src/low/easy/relic_bn_sqr_low.c
-endif
-
-if WITH_DV
-RELIC_SOURCES += \
-	depends/relic/src/dv/relic_dv_mem.c \
-	depends/relic/src/dv/relic_dv_util.c
 endif
 
 if WITH_FP
@@ -329,6 +330,51 @@ RELIC_SOURCES += $(FB_SOURCES) \
 	depends/relic/src/low/easy/relic_fb_sqr_low.c \
 	depends/relic/src/low/easy/relic_fb_srt_low.c \
 	depends/relic/src/low/easy/relic_fb_trc_low.c
+endif
+endif
+
+if ARITH_GMP
+if WITH_BN
+RELIC_SOURCES += $(BN_SOURCES) \
+	depends/relic/src/low/gmp/relic_bn_add_low.c   \
+	depends/relic/src/low/gmp/relic_bn_div_low.c   \
+	depends/relic/src/low/gmp/relic_bn_mod_low.c   \
+	depends/relic/src/low/gmp/relic_bn_mul_low.c   \
+	depends/relic/src/low/gmp/relic_bn_shift_low.c \
+	depends/relic/src/low/gmp/relic_bn_sqr_low.c
+endif
+
+if WITH_FP
+RELIC_SOURCES += $(FP_SOURCES) \
+	depends/relic/src/low/gmp/relic_fp_add_low.c   \
+	depends/relic/src/low/gmp/relic_fp_inv_low.c   \
+	depends/relic/src/low/gmp/relic_fp_mul_low.c   \
+	depends/relic/src/low/gmp/relic_fp_rdc_low.c   \
+	depends/relic/src/low/gmp/relic_fp_shift_low.c \
+	depends/relic/src/low/gmp/relic_fp_sqr_low.c
+endif
+
+if WITH_FPX
+RELIC_SOURCES += $(FPX_SOURCES) \
+	depends/relic/src/low/easy/relic_fpx_add_low.c \
+	depends/relic/src/low/easy/relic_fpx_mul_low.c \
+	depends/relic/src/low/easy/relic_fpx_rdc_low.c \
+	depends/relic/src/low/easy/relic_fpx_sqr_low.c
+endif
+
+if WITH_FB
+RELIC_SOURCES += $(FB_SOURCES) \
+	depends/relic/src/low/gmp/relic_fb_add_low.c   \
+	depends/relic/src/low/easy/relic_fb_inv_low.c  \
+	depends/relic/src/low/easy/relic_fb_itr_low.c  \
+	depends/relic/src/low/easy/relic_fb_mul_low.c  \
+	depends/relic/src/low/easy/relic_fb_rdc_low.c  \
+	depends/relic/src/low/gmp/relic_fb_shift_low.c \
+	depends/relic/src/low/easy/relic_fb_slv_low.c  \
+	depends/relic/src/low/easy/relic_fb_sqr_low.c  \
+	depends/relic/src/low/easy/relic_fb_srt_low.c  \
+	depends/relic/src/low/easy/relic_fb_trc_low.c
+endif
 endif
 
 if WITH_FBX
@@ -420,5 +466,6 @@ librelic_la_SOURCES = \
 librelic_la_CPPFLAGS = $(AM_CPPFLAGS) $(RELIC_CPPFLAGS) $(RELIC_INCLUDES)
 librelic_la_CXXFLAGS = $(AM_CXXFLAGS)
 librelic_la_CFLAGS   = $(AM_CFLAGS) $(WARN_CFLAGS) $(NOWARN_CFLAGS)
+librelic_la_LDFLAGS  = $(AM_LDFLAGS)
 
 noinst_LTLIBRARIES += $(LIBRELIC)

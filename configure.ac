@@ -91,6 +91,60 @@ AC_DEFINE([EASY],    [1], [Easy C-only backend.])
 AC_DEFINE([GMP],     [2], [Backend based on GNU Multiple Precision library.])
 AC_DEFINE([GMP_SEC], [3], [Backend based on GNU Multiple Precision library, but using constant-time code.])
 
+AC_DEFUN([GMP_CHECK],[
+if test x"$has_gmp" != x"yes"; then
+  CPPFLAGS_TEMP="$CPPFLAGS"
+  CPPFLAGS="$GMP_CPPFLAGS $CPPFLAGS"
+  LIBS_TEMP="$LIBS"
+  LIBS="$GMP_LDFLAGS $LIBS"
+  AC_CHECK_HEADER(gmp.h,[AC_CHECK_LIB(gmp, __gmpz_init,[has_gmp=yes; GMP_LIBS="-lgmp";])])
+  CPPFLAGS="$CPPFLAGS_TEMP"
+  LIBS="$LIBS_TEMP"
+fi
+])
+
+AC_ARG_WITH([backend],
+  [AS_HELP_STRING([--with-backend=auto|easy|gmp],
+  [backend implementation to use [default=auto]])],
+  [want_backend=$withval],
+  [want_backend=auto]
+)
+
+if test x"$want_backend" = x"auto"; then
+  GMP_CHECK
+  if test x"$has_gmp" = x"yes"; then
+    want_backend=gmp
+  else
+    want_backend=easy
+  fi
+else
+  case $want_backend in
+  gmp)
+    GMP_CHECK
+    if test x"$has_gmp" != x"yes"; then
+      AC_MSG_ERROR([gmp backend explicitly requested but libgmp not available])
+    fi
+    ;;
+  easy)
+    ;;
+  *)
+    AC_MSG_ERROR([invalid backend explicitly requested])
+    ;;
+  esac
+fi
+
+case $want_backend in
+gmp)
+  AC_DEFINE(ARITH, GMP, [Define if GNU MP backend is requested])
+  ;;
+easy)
+  AC_DEFINE(ARITH, EASY, [Define if C-only backend is requested].)
+  ;;
+*)
+  AC_MSG_ERROR([invalid backend explicitly requested])
+  ;;
+esac
+
 dnl Relic multithreading APIs
 AC_DEFINE([OPENMP],  [1], [OpenMP multithreading support.])
 AC_DEFINE([PTHREAD], [2], [POSIX multithreading support.])
@@ -272,6 +326,25 @@ case $host in
      AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
      AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
      AC_DEFINE([OPSYS], [MACOSX], [Detected operation system.])
+     AC_PATH_PROG([BREW],brew,)
+     if test x$BREW != x; then
+       # These Homebrew packages may be keg-only, meaning that they won't be found
+       # in expected paths because they may conflict with system files. Ask
+       # Homebrew where each one is located, then adjust paths accordingly.
+       gmp_prefix=`$BREW --prefix gmp 2>/dev/null`
+       if test x$gmp_prefix != x; then
+         GMP_CPPFLAGS="-I$gmp_prefix/include"
+         GMP_LDFLAGS="-L$gmp_prefix/lib"
+       fi
+     else
+       AC_PATH_PROG([PORT],port,)
+       # If homebrew isn't installed and macports is, add the macports default paths
+       # as a last resort.
+       if test x$PORT != x; then
+         CPPFLAGS="$CPPFLAGS -isystem /opt/local/include"
+         LDFLAGS="$LDFLAGS -L/opt/local/lib"
+       fi
+     fi
      ;;
   *linux*)
      AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
@@ -477,8 +550,6 @@ AC_DEFINE(RAND, HASHD, Chosen random generator.)
 AC_DEFINE(MULTI, PTHREAD, Chosen multithreading API.)
 AC_DEFINE(TIMER, CYCLE, Chosen timer.)
 
-AC_DEFINE(ARITH, EASY, Arithmetic backend.)
-
 dnl Check for pthread compile/link requirements
 AX_PTHREAD
 
@@ -634,6 +705,9 @@ AM_CONDITIONAL([USE_TESTS], [test x$BUILD_TEST = xyes])
 AM_CONDITIONAL([USE_BENCH], [test x$BUILD_BENCH = xyes])
 AM_CONDITIONAL([HARDEN], [test "$use_hardening" = "yes"])
 
+AM_CONDITIONAL([ARITH_EASY], [test "$want_backend" = "easy"])
+AM_CONDITIONAL([ARITH_GMP], [test "$want_backend" = "gmp"])
+
 AC_SUBST(CPU_ARCH)
 AC_SUBST(RAND_PATH, hashd)
 AC_SUBST(RELIC_CPPFLAGS)
@@ -648,6 +722,10 @@ AC_SUBST(PIE_FLAGS)
 AC_SUBST(CORE_LDFLAGS)
 AC_SUBST(CORE_CPPFLAGS)
 AC_SUBST(CORE_CXXFLAGS)
+
+AC_SUBST(GMP_LDFLAGS)
+AC_SUBST(GMP_CPPFLAGS)
+AC_SUBST(GMP_LIBS)
 
 AC_CONFIG_HEADERS([depends/relic/include/relic_conf.h])
 AC_CONFIG_FILES([Makefile])
