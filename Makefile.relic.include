@@ -280,7 +280,6 @@ RELIC_SOURCES += \
 	depends/relic/src/rand/relic_rand_call.c \
 	depends/relic/src/rand/relic_rand_core.c \
 	depends/relic/src/rand/relic_rand_hashd.c \
-	depends/relic/src/rand/relic_rand_rdrnd.c \
 	depends/relic/src/rand/relic_rand_udev.c
 
 if WITH_DV
