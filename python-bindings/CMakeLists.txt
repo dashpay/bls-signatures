@@ -1,3 +1,4 @@
+include(FetchContent)
 
 FetchContent_Declare(
   pybind11
