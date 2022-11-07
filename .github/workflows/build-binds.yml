@@ -1,4 +1,4 @@
-name: Build and test library
+name: Build and test binds
 
 on:
   push:
@@ -17,22 +17,50 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }}, Python ${{ matrix.python }}, Go ${{ matrix.golang }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
+        golang: [ '1.17' ]
+        python: ['3.7', '3.8', '3.9', '3.10']
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - uses: actions/setup-python@v2
+      name: Install Python
+      with:
+        python-version: ${{ matrix.python }}
+
+    - name: Test Python implementation
+      run: |
+        python python-impl/impl-test.py
+
+    - name: Install Emscripten SDK
+      uses: mymindstorm/setup-emsdk@v11
+
+    - name: Build JavaScript bindings
+      run: |
+        emcc -v
+        sh emsdk_build.sh
+
+    - name: Test JavaScript bindings
+      run: |
+        sh js_test.sh
+
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^${{ matrix.golang }}
+
     - name: Prepare build system for Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get update
-        sudo apt-get install -qq --yes valgrind snap libgmp-dev libsodium-dev
+        sudo apt-get install -qq --yes snap libgmp-dev
         sudo apt-get remove --purge cmake -y
         sudo snap install cmake --classic
         hash -r
@@ -43,21 +71,15 @@ jobs:
       run: |
         ls -l
         export MACOSX_DEPLOYMENT_TARGET=10.14
+        brew install gmp
 
     - name: Build library using CMake
       run: |
-        mkdir -p build
-        ls -l build
-        cd build
-        cmake .. -DBUILD_BLS_PYTHON_BINDINGS=0
+        mkdir -p build && cd build
+        cmake ..
         cmake --build . -- -j 6
 
-    - name: Run tests with CMake build
+    - name: Build Go bindings
       run: |
-        cd build
-        echo "Running ./src/runtest"
-        ./src/runtest
-
-    - name: Run valgrind on Ubuntu
-      if: startsWith(matrix.os, 'ubuntu')
-      run: cd build && valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all  ./src/runtest
+        cd go-bindings
+        make
