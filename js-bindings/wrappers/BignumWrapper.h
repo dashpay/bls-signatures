@@ -15,7 +15,7 @@
 #ifndef JS_BINDINGS_WRAPPERS_BIGNUMWRAPPER_H_
 #define JS_BINDINGS_WRAPPERS_BIGNUMWRAPPER_H_
 
-#include "../helpers.h"
+#include <helpers.h>
 #include "JSWrapper.h"
 
 namespace js_wrappers {

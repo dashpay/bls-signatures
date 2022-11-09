@@ -10,7 +10,7 @@ DASHBLS_CPPFLAGS = -DBLSALLOC_MINIALLOC=1
 DASHBLS_INCLUDES = \
 	-I$(builddir) \
 	-I$(builddir)/obj \
-	-I$(top_srcdir)/src
+	-I$(top_srcdir)/include/dashbls
 
 DASHBLS_H = \
 	src/bls.hpp \

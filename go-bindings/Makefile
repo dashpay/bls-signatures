@@ -13,15 +13,17 @@ CURR_DIR := $(dir $(MAKEFILE_PATH))
 
 CGO_ENABLED := 1
 
-CGO_LDFLAGS ?= "-L$(CURR_DIR)../build/depends/minialloc \
+CGO_LDFLAGS ?= "\
+-L$(CURR_DIR)../build/depends/minialloc \
 -L$(CURR_DIR)../build/depends/relic/lib \
 -L$(CURR_DIR)../build/src \
 -ldashbls -lrelic_s -lgmp -lminialloc"
 
-CGO_CXXFLAGS ?= "-I$(CURR_DIR)../depends/minialloc/include \
--I$(CURR_DIR)../depends/relic/include \
+CGO_CXXFLAGS ?= "\
 -I$(CURR_DIR)../build/depends/relic/include \
--I$(CURR_DIR)../build/src"
+-I$(CURR_DIR)../depends/minialloc/include \
+-I$(CURR_DIR)../depends/relic/include \
+-I$(CURR_DIR)../include"
 
 prepare:
 	@mkdir -p ../build/src/dashbls

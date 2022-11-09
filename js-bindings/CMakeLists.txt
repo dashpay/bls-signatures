@@ -3,9 +3,11 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(
         ${INCLUDE_DIRECTORIES}
-	${CMAKE_BINARY_DIR}/_deps/relic-src/include
-        ${CMAKE_BINARY_DIR}/_deps/relic-build/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../contrib/catch
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include
+        ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/include
 )
 
 file(GLOB_RECURSE WRAP_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/wrappers/*.h)
