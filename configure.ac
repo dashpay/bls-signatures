@@ -79,14 +79,14 @@ AC_ARG_ENABLE([hardening],
 dnl Define enum mappings for relic config
 AC_DEFINE([RLC_VERSION], ["0.5.0"], [Relic Version])
 
-dnl Library processor architecture
+dnl dashbls: Library processor architecture
 AC_DEFINE([AVR],     [1], [Atmel AVR ATMega128 8-bit architecture.])
 AC_DEFINE([MSP],     [2], [MSP430 16-bit architecture.])
 AC_DEFINE([ARM],     [3], [ARM 32-bit architecture.])
 AC_DEFINE([X86],     [4], [Intel x86-compatible 32-bit architecture.])
 AC_DEFINE([X64],     [5], [AMD64-compatible 64-bit architecture.])
 
-dnl Relic arithmetic backends
+dnl Relic: Arithmetic backends
 AC_DEFINE([EASY],    [1], [Easy C-only backend.])
 AC_DEFINE([GMP],     [2], [Backend based on GNU Multiple Precision library.])
 AC_DEFINE([GMP_SEC], [3], [Backend based on GNU Multiple Precision library, but using constant-time code.])
@@ -145,11 +145,11 @@ easy)
   ;;
 esac
 
-dnl Relic multithreading APIs
+dnl Relic: Multithreading APIs
 AC_DEFINE([OPENMP],  [1], [OpenMP multithreading support.])
 AC_DEFINE([PTHREAD], [2], [POSIX multithreading support.])
 
-dnl Relic supported operating systems
+dnl Relic: Supported operating systems
 AC_DEFINE([LINUX],   [1], [GNU/Linux operating system.])
 AC_DEFINE([FREEBSD], [2], [FreeBSD operating system.])
 AC_DEFINE([MACOSX],  [3], [MacOS operating system.])
@@ -158,7 +158,7 @@ AC_DEFINE([DROID],   [5], [Android operating system.])
 AC_DEFINE([DUINO],   [6], [Arduino platform.])
 dnl AC_DEFINE([OPENBSD], [7], [OpenBSD operating system.])
 
-dnl Relic supported timers
+dnl Relic: Supported timers
 AC_DEFINE([HREAL],   [1], [Per-process high-resolution timer.])
 AC_DEFINE([HPROC],   [2], [Per-process high-resolution timer.])
 AC_DEFINE([HTHRD],   [3], [Per-thread high-resolution timer.])
@@ -167,9 +167,33 @@ AC_DEFINE([POSIX],   [4], [POSIX-compatible timer.])
 AC_DEFINE([CYCLE],   [6], [Cycle-counting timer.])
 AC_DEFINE([PERF],    [7], [Performance monitoring framework.])
 
-dnl Relic memory-allocation policies
+dnl Relic: Memory-allocation policies
 AC_DEFINE([AUTO],    [1], [Automatic memory allocation.])
 AC_DEFINE([DYNAMIC], [2], [Dynamic memory allocation.])
+
+dnl Relic (CP): Support for faster CRT-based exponentiation in factoring-based cryptosystems
+AC_DEFINE([PKCS1],   [2], [RSA PKCS#1 v1.5 padding.])
+AC_DEFINE([PKCS2],   [3], [RSA PKCS#1 v2.1 padding.])
+
+dnl Relic (MD): Available hash functions
+AC_DEFINE([SH224],   [2], [SHA-224 hash function.])
+AC_DEFINE([SH256],   [3], [SHA-256 hash function.])
+AC_DEFINE([SH384],   [4], [SHA-384 hash function.])
+AC_DEFINE([SH512],   [5], [SHA-512 hash function.])
+AC_DEFINE([B2S160],  [6], [BLAKE2s-160 hash function.])
+AC_DEFINE([B2S256],  [7], [BLAKE2s-256 hash function.])
+
+dnl Relic (RAND): Available pseudo-random number generators
+AC_DEFINE([HASHD],   [1], [NIST HASH-DRBG generator.])
+AC_DEFINE([RDRND],   [2], [Intel RdRand instruction.])
+AC_DEFINE([UDEV],    [3], [Operating system underlying generator.])
+AC_DEFINE([CALL],    [4], [Override library generator with the callback.])
+
+dnl Relic (RAND): Available random number generator seeders
+AC_DEFINE([LIBC],    [1], [Standard C library generator.])
+dnl AC_DEFINE([RDRND],   [2], [Intel RdRand instruction.])
+dnl AC_DEFINE([UDEV],    [3], [Operating system underlying generator.])
+AC_DEFINE([WCGR],    [4], [Use Windows' CryptGenRandom.])
 
 AC_DEFINE([SINGLE],  [0], [A multiple precision integer can store w words.])
 AC_DEFINE([CARRY],   [1], [A multiple precision integer can store the result of an addition.])
@@ -177,8 +201,6 @@ AC_DEFINE([DOUBLE],  [2], [A multiple precision integer can store the result of 
 AC_DEFINE([BASIC],   [1], [Basic method.])
 AC_DEFINE([PRIME],   [1], [Prime curves.])
 AC_DEFINE([TATEP],   [1], [Tate pairing.])
-AC_DEFINE([HASHD],   [1], [NIST HASH-DRBG generator.])
-AC_DEFINE([LIBC],    [1], [Standard C library generator.])
 AC_DEFINE([COMBA],   [2], [Comba method.])
 AC_DEFINE([LEHME],   [2], [Lehmer's fast GCD Algorithm.])
 AC_DEFINE([SAFEP],   [2], [Safe prime generation.])
@@ -192,8 +214,6 @@ AC_DEFINE([COMBS],   [2], [Single-table comb method.])
 AC_DEFINE([TRICK],   [2], [Shamir's trick.])
 AC_DEFINE([CHAR2],   [2], [Binary curves.])
 AC_DEFINE([WEILP],   [2], [Weil pairing.])
-AC_DEFINE([SH224],   [2], [SHA-224 hash function.])
-AC_DEFINE([PKCS1],   [2], [RSA PKCS#1 v1.5 padding.])
 AC_DEFINE([MONTY],   [3], [Montgomery method.])
 AC_DEFINE([STEIN],   [3], [Stein's binary GCD Algorithm.])
 AC_DEFINE([STRON],   [3], [Strong prime generation.])
@@ -206,25 +226,16 @@ AC_DEFINE([HALVE],   [3], [Halving.])
 AC_DEFINE([EDDIE],   [3], [Edwards curves.])
 AC_DEFINE([EXTND],   [3], [Extended projective twisted Edwards coordinates.])
 AC_DEFINE([OATEP],   [3], [Optimal ate pairing.])
-AC_DEFINE([SH256],   [3], [SHA-256 hash function.])
-AC_DEFINE([PKCS2],   [3], [RSA PKCS#1 v2.1 padding.])
-AC_DEFINE([UDEV],    [3], [Operating system underlying generator.])
 AC_DEFINE([PMERS],   [4], [Pseudo-Mersenne method.])
 AC_DEFINE([MULTP],   [4], [Reuse multiplication for squaring.])
 AC_DEFINE([EXGCD],   [4], [Extended Euclidean algorithm.])
 AC_DEFINE([LWNAF],   [4], [Left-to-right Width-w NAF.])
 AC_DEFINE([JOINT],   [4], [Joint sparse form.])
-AC_DEFINE([SH384],   [4], [SHA-384 hash function.])
-AC_DEFINE([CALL],    [4], [Override library generator with the callback.])
-AC_DEFINE([WCGR],    [4], [Use Windows' CryptGenRandom.])
 AC_DEFINE([DIVST],   [5], [Constant-time inversion by Bernstein-Yang division steps.])
 AC_DEFINE([ITOHT],   [5], [Itoh-Tsuji inversion.])
 AC_DEFINE([LWREG],   [5], [Left-to-right Width-w NAF.])
-AC_DEFINE([SH512],   [5], [SHA-512 hash function.])
 AC_DEFINE([BRUCH],   [6], [Hardware-friendly inversion by Brunner-Curiger-Hofstetter.])
-AC_DEFINE([B2S160],  [6], [BLAKE2s-160 hash function.])
 AC_DEFINE([CTAIA],   [7], [Constant-time version of almost inverse.])
-AC_DEFINE([B2S256],  [7], [BLAKE2s-256 hash function.])
 AC_DEFINE([LOWER],   [8], [Use implementation provided by the lower layer.])
 
 dnl Define relic switches
