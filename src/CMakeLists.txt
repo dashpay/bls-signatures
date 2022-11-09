@@ -1,7 +1,7 @@
 file(GLOB HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
 source_group("SrcHeaders" FILES ${HEADERS})
 
-add_library(bls-dash
+add_library(dashbls
   ${HEADERS}
   ${CMAKE_CURRENT_SOURCE_DIR}/privatekey.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bls.cpp
@@ -14,7 +14,7 @@ add_library(bls-dash
   ${CMAKE_CURRENT_SOURCE_DIR}/threshold.cpp
 )
 
-target_include_directories(bls-dash
+target_include_directories(dashbls
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     $<$<BOOL:${GMP_FOUND}>:${GMP_INCLUDES}>
@@ -22,32 +22,32 @@ target_include_directories(bls-dash
     ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include
 )
 
-target_compile_definitions(bls-dash
+target_compile_definitions(dashbls
   PRIVATE
     BLSALLOC_MINIALLOC=1
 )
 
-target_link_libraries(bls-dash
+target_link_libraries(dashbls
   PUBLIC
     relic_s
     minialloc
 )
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include/ DESTINATION include/bls-dash)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include/ DESTINATION include/bls-dash)
-install(FILES ${HEADERS} DESTINATION include/bls-dash)
-install(FILES $<TARGET_FILE:bls-dash> DESTINATION lib)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include/ DESTINATION include/dashbls)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include/ DESTINATION include/dashbls)
+install(FILES ${HEADERS} DESTINATION include/dashbls)
+install(FILES $<TARGET_FILE:dashbls> DESTINATION lib)
 
 if(BUILD_BLS_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/CMakeLists.txt)
 
   add_executable(runtest test.cpp)
   target_link_libraries(runtest
-                        PRIVATE bls-dash
+                        PRIVATE dashbls
                         PRIVATE catch2)
 endif()
 
 if(BUILD_BLS_BENCHMARKS)
   add_executable(runbench test-bench.cpp)
-  target_link_libraries(runbench PRIVATE bls-dash)
+  target_link_libraries(runbench PRIVATE dashbls)
 endif()

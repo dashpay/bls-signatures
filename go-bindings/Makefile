@@ -16,7 +16,7 @@ CGO_ENABLED := 1
 CGO_LDFLAGS ?= "-L$(CURR_DIR)../build/depends/minialloc \
 -L$(CURR_DIR)../build/depends/relic/lib \
 -L$(CURR_DIR)../build/src \
--lbls-dash -lrelic_s -lgmp -lminialloc"
+-ldashbls -lrelic_s -lgmp -lminialloc"
 
 CGO_CXXFLAGS ?= "-I$(CURR_DIR)../depends/minialloc/include \
 -I$(CURR_DIR)../depends/relic/include \
@@ -24,8 +24,8 @@ CGO_CXXFLAGS ?= "-I$(CURR_DIR)../depends/minialloc/include \
 -I$(CURR_DIR)../build/src"
 
 prepare:
-	@mkdir -p ../build/src/bls-dash
-	cp -rv ../src/* ../build/src/bls-dash
+	@mkdir -p ../build/src/dashbls
+	cp -rv ../src/* ../build/src/dashbls
 
 fmt:  ## Run go fmt to format Go files
 	$(GO) fmt
