@@ -14,7 +14,7 @@ AC_CANONICAL_HOST
 AH_TOP([#ifndef RLC_CONF_H])
 AH_TOP([#define RLC_CONF_H])
 AH_BOTTOM([#endif /*RLC_CONF_H*/])
-AM_INIT_AUTOMAKE([foreign subdir-objects])
+AM_INIT_AUTOMAKE([foreign no-define subdir-objects])
 
 dnl faketime messes with timestamps and causes configure to be re-run.
 dnl --disable-maintainer-mode can be used to bypass this.
