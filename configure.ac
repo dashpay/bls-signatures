@@ -741,3 +741,6 @@ AC_CONFIG_HEADERS([depends/relic/include/relic_conf.h])
 AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
+
+dnl Peplace conflict-prone PACKAGE-prefixed macros with DASHBLS
+sed -i.old 's/PACKAGE/DASHBLS/g' depends/relic/include/relic_conf.h
