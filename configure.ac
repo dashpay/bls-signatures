@@ -334,19 +334,37 @@ if test x$use_big_endian = xyes; then
 fi
 
 use_pkgconfig=yes
+
+case $host_cpu in
+  x86_64)
+    dnl Support for AMD64 (also known as x86_64 on some platforms) processors
+    CPU_ARCH="x64"
+    AC_DEFINE([ARCH], [X64], [Architecture.])
+    AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
+    ;;
+  aarch*)
+    dnl Relic doesn't support aarch64 yet, set CPU_ARCH to none.
+    dnl Support for 64-bit ARM processors
+    CPU_ARCH="none"
+    AC_DEFINE([ARCH], [ARM], [Architecture.])
+    AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
+    ;;
+  i?86)
+    dnl Support for Intel x86 processors
+    CPU_ARCH="x86"
+    AC_DEFINE([ARCH], [X86], [Architecture.])
+    AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+    ;;
+  arm*)
+    dnl Support for 32-bit native ARM processors
+    CPU_ARCH="arm"
+    AC_DEFINE([ARCH], [ARM], [Architecture.])
+    AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+    ;;
+esac
+
 case $host in
   *darwin*)
-     case $host_cpu in
-       x86_64)
-         CPU_ARCH="x64"
-         AC_DEFINE([ARCH], [X64], [Architecture.])
-         ;;
-       aarch*)
-         CPU_ARCH="none"
-         AC_DEFINE([ARCH], [ARM], [Architecture.])
-         ;;
-     esac
-     AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
      AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
      AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
      AC_DEFINE([OPSYS], [MACOSX], [Detected operation system.])
@@ -375,35 +393,9 @@ case $host in
      AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
      AC_DEFINE([OPSYS], [LINUX], [Detected operation system.])
      RELIC_CPPFLAGS="-D_GNU_SOURCE"
-     case $host_cpu in
-       x86_64)
-          CPU_ARCH="x64"
-          AC_DEFINE([ARCH], [X64], [Architecture.])
-          AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
-          ;;
-       i?86)
-          CPU_ARCH="x86"
-          AC_DEFINE([ARCH], [X86], [Architecture.])
-          AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
-          ;;
-       arm*)
-          CPU_ARCH="arm"
-          AC_DEFINE([ARCH], [ARM], [Architecture.])
-          AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
-          ;;
-       aarch*)
-          dnl Relic doesn't support aarch64 yet, set CPU_ARCH to none.
-          CPU_ARCH="none"
-          AC_DEFINE([ARCH], [ARM], [Architecture.])
-          AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
-          ;;
-     esac
      ;;
   *mingw*)
      use_pkgconfig=no
-     CPU_ARCH="x64"
-     AC_DEFINE([ARCH], [X64], [Architecture.])
-     AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
      AC_DEFINE([SEED], [WCGR], [Chosen random generator seeder.])
      AC_DEFINE([OPSYS], [WINDOWS], [Detected operation system.])
      LIBTOOL_APP_LDFLAGS="$LIBTOOL_APP_LDFLAGS -all-static"
