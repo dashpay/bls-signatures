@@ -378,6 +378,9 @@ case $host_cpu in
     AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
     AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
     ;;
+  *)
+    AC_MSG_ERROR([Unable to determine host architecture, may not be supported!])
+    ;;
 esac
 
 case $host in
