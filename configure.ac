@@ -86,6 +86,9 @@ AC_DEFINE([ARM],     [3], [ARM 32-bit architecture.])
 AC_DEFINE([X86],     [4], [Intel x86-compatible 32-bit architecture.])
 AC_DEFINE([X64],     [5], [AMD64-compatible 64-bit architecture.])
 
+dnl Relic: Generic options
+AC_DEFINE([RELIC_NONE],    [0], [Unknown or unrecognized parameter.])
+
 dnl Relic: Arithmetic backends
 AC_DEFINE([EASY],    [1], [Easy C-only backend.])
 AC_DEFINE([GMP],     [2], [Backend based on GNU Multiple Precision library.])
@@ -209,9 +212,11 @@ dnl AC_DEFINE([RDRND],   [2], [Intel RdRand instruction.])
 dnl AC_DEFINE([UDEV],    [3], [Operating system underlying generator.])
 AC_DEFINE([WCGR],    [4], [Use Windows' CryptGenRandom.])
 
-AC_DEFINE([SINGLE],  [0], [A multiple precision integer can store w words.])
-AC_DEFINE([CARRY],   [1], [A multiple precision integer can store the result of an addition.])
-AC_DEFINE([DOUBLE],  [2], [A multiple precision integer can store the result of a multiplication.])
+dnl Relic (BN): Options for the multiple precision
+AC_DEFINE([SINGLE],  [1], [A multiple precision integer can store w words.])
+AC_DEFINE([CARRY],   [2], [A multiple precision integer can store the result of an addition.])
+AC_DEFINE([DOUBLE],  [3], [A multiple precision integer can store the result of a multiplication.])
+
 AC_DEFINE([BASIC],   [1], [Basic method.])
 AC_DEFINE([PRIME],   [1], [Prime curves.])
 AC_DEFINE([TATEP],   [1], [Tate pairing.])
@@ -330,7 +335,7 @@ AC_ARG_ENABLE([big_endian],
   [use_big_endian=no])
 
 if test x$use_big_endian = xyes; then
-  AC_DEFINE([BIGED],   [0], [Define this symbol if big-endian support is enabled])
+  AC_DEFINE([BIGED],   [1], [Define this symbol if big-endian support is enabled])
 fi
 
 use_pkgconfig=yes
@@ -360,6 +365,18 @@ case $host_cpu in
     CPU_ARCH="arm"
     AC_DEFINE([ARCH], [ARM], [Architecture.])
     AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+    ;;
+  *32*)
+    dnl Support for an undefined 32-bit architecture
+    CPU_ARCH="none"
+    AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
+    AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+    ;;
+  *64*)
+    dnl Support for an undefined 64-bit architecture
+    CPU_ARCH="none"
+    AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
+    AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
     ;;
 esac
 
