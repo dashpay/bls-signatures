@@ -406,10 +406,6 @@ case $host in
        fi
      fi
      ;;
-  *linux*)
-     AC_DEFINE([OPSYS], [LINUX], [Detected operation system.])
-     RELIC_CPPFLAGS="-D_GNU_SOURCE"
-     ;;
   *mingw*)
      use_pkgconfig=no
      AC_DEFINE([OPSYS], [WINDOWS], [Detected operation system.])
@@ -423,6 +419,22 @@ case $host in
      archive_cmds_CXX="\$CC -shared \$libobjs \$deplibs \$compiler_flags -static -o \$output_objdir/\$soname \${wl}--enable-auto-image-base -Xlinker --out-implib -Xlinker \$lib"
      postdeps_CXX=
      ;;
+  *linux*)
+    AC_DEFINE([OPSYS], [LINUX], [Detected operation system.])
+    RELIC_CPPFLAGS="-D_GNU_SOURCE"
+    ;;
+  *android*)
+    AC_DEFINE([OPSYS], [DROID], [Detected operation system.])
+    ;;
+  *freebsd*)
+    AC_DEFINE([OPSYS], [FREEBSD], [Detected operation system.])
+    ;;
+  *netbsd*)
+    AC_DEFINE([OPSYS], [NETBSD], [Detected operation system.])
+    ;;
+  *)
+    AC_DEFINE([OPSYS], [RELIC_NONE], [Detected operation system.])
+    ;;
 esac
 
 case $host in
