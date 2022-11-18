@@ -385,8 +385,6 @@ esac
 
 case $host in
   *darwin*)
-     AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
-     AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
      AC_DEFINE([OPSYS], [MACOSX], [Detected operation system.])
      AC_PATH_PROG([BREW],brew,)
      if test x$BREW != x; then
@@ -409,14 +407,11 @@ case $host in
      fi
      ;;
   *linux*)
-     AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
-     AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
      AC_DEFINE([OPSYS], [LINUX], [Detected operation system.])
      RELIC_CPPFLAGS="-D_GNU_SOURCE"
      ;;
   *mingw*)
      use_pkgconfig=no
-     AC_DEFINE([SEED], [WCGR], [Chosen random generator seeder.])
      AC_DEFINE([OPSYS], [WINDOWS], [Detected operation system.])
      LIBTOOL_APP_LDFLAGS="$LIBTOOL_APP_LDFLAGS -all-static"
 
@@ -428,6 +423,21 @@ case $host in
      archive_cmds_CXX="\$CC -shared \$libobjs \$deplibs \$compiler_flags -static -o \$output_objdir/\$soname \${wl}--enable-auto-image-base -Xlinker --out-implib -Xlinker \$lib"
      postdeps_CXX=
      ;;
+esac
+
+case $host in
+  *darwin*)
+    dnl Relic: Don't define FP_QNRES on Darwin
+    AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
+    ;;
+  *mingw*)
+    AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
+    AC_DEFINE([SEED], [WCGR], [Chosen random generator seeder.])
+    ;;
+  *)
+    AC_DEFINE([FP_QNRES], [], [Use -1 as quadratic non-residue.])
+    AC_DEFINE([SEED], [UDEV], [Chosen random generator seeder.])
+    ;;
 esac
 
 if test x$use_pkgconfig = xyes; then
