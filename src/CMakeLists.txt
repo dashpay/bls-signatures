@@ -38,14 +38,14 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include/ DESTINAT
 install(FILES ${HEADERS} DESTINATION include/bls-dash)
 install(FILES $<TARGET_FILE:bls-dash> DESTINATION lib)
 
-#if(BUILD_BLS_TESTS)
-#  include(${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/CMakeLists.txt)
-#
-#  add_executable(runtest test.cpp)
-#  target_link_libraries(runtest
-#                        PRIVATE bls-dash
-#                        PRIVATE catch2)
-#endif()
+if(BUILD_BLS_TESTS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/CMakeLists.txt)
+
+  add_executable(runtest test.cpp)
+  target_link_libraries(runtest
+                        PRIVATE bls-dash
+                        PRIVATE catch2)
+endif()
 
 if(BUILD_BLS_BENCHMARKS)
   add_executable(runbench test-bench.cpp)
