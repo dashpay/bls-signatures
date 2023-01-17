@@ -16,11 +16,11 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "../src/bls.hpp"
-#include "../src/elements.hpp"
-#include "../src/hdkeys.hpp"
-#include "../src/privatekey.hpp"
-#include "../src/schemes.hpp"
+#include <dashbls/bls.hpp>
+#include <dashbls/elements.hpp>
+#include <dashbls/hdkeys.hpp>
+#include <dashbls/privatekey.hpp>
+#include <dashbls/schemes.hpp>
 
 namespace py = pybind11;
 using namespace bls;

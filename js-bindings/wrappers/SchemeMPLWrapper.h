@@ -15,7 +15,7 @@
 #ifndef JS_BINDINGS_WRAPPERS_SCHEMEMPLWRAPPER_H_
 #define JS_BINDINGS_WRAPPERS_SCHEMEMPLWRAPPER_H_
 
-#include "../helpers.h"
+#include <helpers.h>
 #include "JSWrapper.h"
 #include "G1ElementWrapper.h"
 #include "PrivateKeyWrapper.h"

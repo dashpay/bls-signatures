@@ -15,7 +15,7 @@
 #ifndef JS_BINDINGS_WRAPPERS_G1ELEMENTWRAPPER_H_
 #define JS_BINDINGS_WRAPPERS_G1ELEMENTWRAPPER_H_
 
-#include "../helpers.h"
+#include <helpers.h>
 #include "JSWrapper.h"
 #include "BignumWrapper.h"
 

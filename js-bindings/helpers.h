@@ -17,11 +17,11 @@
 
 #include <algorithm>
 #include <vector>
-#include "emscripten/val.h"
+#include <emscripten/val.h>
 extern "C" {
-#include "relic.h"
+#include <relic.h>
 }
-#include "../src/bls.hpp"
+#include <dashbls/bls.hpp>
 
 using namespace emscripten;
 using namespace bls;

@@ -45,7 +45,7 @@ chain code. This follows the spec from BIP-0032, with a few changes:
 */
 class ExtendedPublicKey {
  public:
-    static const uint32_t VERSION = 1;
+    static const uint32_t REVISION = 1;
 
     // version(4) depth(1) parent fingerprint(4) child#(4) cc(32) pk(48)
     static const uint32_t SIZE = 93;

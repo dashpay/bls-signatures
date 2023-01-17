@@ -28,19 +28,6 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules
 )
 
-include(FetchContent)
-
-FetchContent_Declare(Sodium
-  GIT_REPOSITORY https://github.com/AmineKhaldi/libsodium-cmake.git
-  # Latest commit at the moment this was added here
-  # Anchored to libsodium v1.0.18
-  GIT_TAG f73a3fe1afdc4e37ac5fe0ddd401bf521f6bba65
-)
-set(SODIUM_PCH "on" CACHE STRING "")
-set(SODIUM_DISABLE_TESTS "on" CACHE STRING "")
-set(SODIUM_CHIA_MINIMAL "on" CACHE STRING "")
-FetchContent_MakeAvailable(Sodium)
-
 # Relic related options
 
 set(STBIN "off" CACHE STRING "Relic - Build static binaries")
@@ -113,7 +100,16 @@ set(QUIET "on" CACHE STRING "Relic - Build with printing disabled")
 set(PP_EXT "LAZYR" CACHE STRING "")
 set(PP_METHD "LAZYR;OATEP" CACHE STRING "")
 
+# Disable mimalloc shared libraries and tests, enable secure mode
+set(MI_SECURE       "on" CACHE STRING "")
+
+set(MI_BUILD_SHARED "off" CACHE STRING "")
+set(MI_BUILD_TESTS  "off" CACHE STRING "")
+set(MI_OVERRIDE     "off" CACHE STRING "")
+
 add_subdirectory(depends/relic)
+add_subdirectory(depends/mimalloc)
+
 add_subdirectory(src)
 
 if(EMSCRIPTEN)

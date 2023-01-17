@@ -15,7 +15,7 @@
 #ifndef JS_BINDINGS_WRAPPERS_PRIVATEKEYWRAPPER_H_
 #define JS_BINDINGS_WRAPPERS_PRIVATEKEYWRAPPER_H_
 
-#include "../helpers.h"
+#include <helpers.h>
 #include "JSWrapper.h"
 #include "G1ElementWrapper.h"
 #include "G2ElementWrapper.h"
