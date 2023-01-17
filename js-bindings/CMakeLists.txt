@@ -11,13 +11,13 @@ include_directories(
 file(GLOB_RECURSE WRAP_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/wrappers/*.h)
 file(GLOB_RECURSE WRAP_SRC ${CMAKE_CURRENT_SOURCE_DIR}/wrappers/*.cpp)
 
-add_executable(blsjs ${CMAKE_CURRENT_SOURCE_DIR}/jsbindings.cpp
+add_executable(blsjstmp ${CMAKE_CURRENT_SOURCE_DIR}/jsbindings.cpp
         ${WRAP_HEADERS} ${WRAP_SRC}  ${CMAKE_CURRENT_SOURCE_DIR}/helpers.h ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
         )
 
 add_custom_target(install_npm_dependencies npm ci)
-add_dependencies(blsjs install_npm_dependencies)
-target_link_libraries(blsjs PRIVATE dashbls)
+add_dependencies(blsjstmp install_npm_dependencies)
+target_link_libraries(blsjstmp PRIVATE bls-dash)
 
 # Copy necessary files for the npm package
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/package.json package.json COPYONLY)
@@ -33,5 +33,5 @@ foreach(file ${JS_BINDINGS_TESTS})
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/${file} tests/${file} COPYONLY)
 endforeach()
 
-set_target_properties(blsjs PROPERTIES LINK_FLAGS "--bind -Oz --closure 1 -s MODULARIZE=1 -s NODEJS_CATCH_EXIT=0 -s NODEJS_CATCH_REJECTION=0")
-add_custom_command(TARGET blsjs POST_BUILD COMMAND npm run build:web)
+set_target_properties(blsjstmp PROPERTIES LINK_FLAGS "--bind -Oz --closure 1 -s MODULARIZE=1 -s NODEJS_CATCH_EXIT=0 -s NODEJS_CATCH_REJECTION=0")
+add_custom_command(TARGET blsjstmp POST_BUILD COMMAND npm run build:web)
