@@ -3,9 +3,11 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(
         ${INCLUDE_DIRECTORIES}
-	${CMAKE_BINARY_DIR}/_deps/relic-src/include
-        ${CMAKE_BINARY_DIR}/_deps/relic-build/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../contrib/catch
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include
+        ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/include
 )
 
 file(GLOB_RECURSE WRAP_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/wrappers/*.h)
@@ -14,10 +16,9 @@ file(GLOB_RECURSE WRAP_SRC ${CMAKE_CURRENT_SOURCE_DIR}/wrappers/*.cpp)
 add_executable(blsjstmp ${CMAKE_CURRENT_SOURCE_DIR}/jsbindings.cpp
         ${WRAP_HEADERS} ${WRAP_SRC}  ${CMAKE_CURRENT_SOURCE_DIR}/helpers.h ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
         )
-
 add_custom_target(install_npm_dependencies npm ci)
 add_dependencies(blsjstmp install_npm_dependencies)
-target_link_libraries(blsjstmp PRIVATE bls-dash)
+target_link_libraries(blsjstmp PRIVATE dashbls)
 
 # Copy necessary files for the npm package
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/package.json package.json COPYONLY)
