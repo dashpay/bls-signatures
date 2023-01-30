@@ -21,7 +21,7 @@ if (typeof window === "object") {
 
 const originalSourceCode = fs.readFileSync('./blsjstmp.js', 'utf-8');
 const modifiedSourceCode = originalSourceCode
-    .replace(/fetch\(H/g, "fetch(wasmUrl");
+    .replace(/fetch\(.,/g, "fetch(wasmUrl,");
 
 const modifiedSourceBuffer = Buffer.from(modifiedSourceCode, 'utf-8');
 
