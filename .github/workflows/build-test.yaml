@@ -49,7 +49,7 @@ jobs:
       run: |
         ls -l
         export MACOSX_DEPLOYMENT_TARGET=10.14
-        brew install autoconf automake gmp
+        brew install autoconf automake gmp pkg-config
 
     - name: Build library using CMake
       if: startsWith(matrix.builder, 'cmake')
