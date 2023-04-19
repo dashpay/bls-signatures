@@ -33,6 +33,8 @@ extern "C" {
 
     pub fn G1ElementNegate(el: G1Element) -> G1Element;
 
+    pub fn G1ElementCopy(el: G1Element) -> G1Element;
+
     pub fn G1ElementSerialize(el: G1Element, legacy: bool) -> *mut ::std::os::raw::c_void;
 
     pub fn G1ElementFree(el: G1Element);
@@ -56,6 +58,8 @@ extern "C" {
     pub fn G2ElementMul(el: G2Element, sk: PrivateKey) -> G2Element;
 
     pub fn G2ElementNegate(el: G2Element) -> G2Element;
+
+    pub fn G2ElementCopy(el: G2Element) -> G2Element;
 
     pub fn G2ElementSerialize(el: G2Element, legacy: bool) -> *mut ::std::os::raw::c_void;
 

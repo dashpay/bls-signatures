@@ -1,11 +1,6 @@
 use std::ffi::c_void;
 
-use bls_dash_sys::{
-    CoreMPLDeriveChildPkUnhardened, G1ElementFree, G1ElementFromBytes, G1ElementGenerator,
-    G1ElementGetFingerprint, G1ElementIsEqual, G1ElementSerialize, G2ElementFree,
-    G2ElementFromBytes, G2ElementIsEqual, G2ElementSerialize, ThresholdPublicKeyRecover,
-    ThresholdSignatureRecover,
-};
+use bls_dash_sys::{CoreMPLDeriveChildPkUnhardened, G1ElementFree, G1ElementFromBytes, G1ElementGenerator, G1ElementGetFingerprint, G1ElementIsEqual, G1ElementSerialize, G1ElementCopy, G2ElementCopy, G2ElementFree, G2ElementFromBytes, G2ElementIsEqual, G2ElementSerialize, ThresholdPublicKeyRecover, ThresholdSignatureRecover};
 #[cfg(feature = "use_serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -134,10 +129,9 @@ impl G1Element {
 
 impl Clone for G1Element {
     fn clone(&self) -> Self {
-        // Serialize the element
-        let bytes = self.to_bytes();
-        // We can panic
-        G1Element::from_bytes(bytes.as_slice()).expect("expected bytes to be valid")
+        unsafe {
+            G1Element{c_element: G1ElementCopy(self.c_element)}
+        }
     }
 }
 
@@ -263,10 +257,9 @@ impl G2Element {
 
 impl Clone for G2Element {
     fn clone(&self) -> Self {
-        // Serialize the element
-        let bytes = self.to_bytes();
-        // We can panic
-        G2Element::from_bytes(bytes.as_slice()).expect("expected bytes to be valid")
+        unsafe {
+            G2Element{c_element: G2ElementCopy(self.c_element)}
+        }
     }
 }
 
