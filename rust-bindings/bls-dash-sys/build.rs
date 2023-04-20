@@ -33,8 +33,10 @@ fn handle_command_output(output: Output) {
 fn main() {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
+    // TODO: fix build for wasm32 on MacOS
+    //   errors with `error: linking with `rust-lld` failed: exit status: 1`
     if target_arch.eq("wasm32") {
-        println!("Build for wasm32 is not compeltely supported");
+        println!("Build for wasm32 is not fully supported");
         return;
     }
 
@@ -279,8 +281,10 @@ fn main() {
 fn main() {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
+    // TODO: fix build for wasm32 on MacOS
+    //   errors with `error: linking with `rust-lld` failed: exit status: 1`
     if target_arch.eq("wasm32") {
-        println!("Build for wasm32 is not compeltely supported");
+        println!("Build for wasm32 is not fully supported");
         return;
     }
 
