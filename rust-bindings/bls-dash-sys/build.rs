@@ -31,6 +31,13 @@ fn handle_command_output(output: Output) {
 
 #[cfg(not(feature = "apple"))]
 fn main() {
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+
+    if target_arch.eq("wasm32") {
+        println!("Build for wasm32 is not compeltely supported");
+        return;
+    }
+
     let root_path = Path::new("../..")
         .canonicalize()
         .expect("can't get abs path");
@@ -270,6 +277,14 @@ fn main() {
 
 #[cfg(feature = "apple")]
 fn main() {
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+
+    if target_arch.eq("wasm32") {
+        println!("Build for wasm32 is not compeltely supported");
+        return;
+    }
+
+
     let target = env::var("TARGET").unwrap();
     println!("Building bls-signatures for apple target: {}", target);
     let root_path = Path::new("../..")
