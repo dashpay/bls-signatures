@@ -43,6 +43,9 @@ if(BUILD_BLS_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/CMakeLists.txt)
 
   add_executable(runtest test.cpp)
+  if(EMSCRIPTEN)
+    target_link_options(runtest PRIVATE "-sEXPORTED_FUNCTIONS=_malloc")
+  endif()
   target_link_libraries(runtest
                         PRIVATE dashbls
                         PRIVATE catch2)
