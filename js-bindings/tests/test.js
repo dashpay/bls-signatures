@@ -1,5 +1,6 @@
 const assert = require('assert');
-const binascii = require('binascii');
+const binascii = require('binascii')
+
 const blsjs = require('../blsjs');
 
 function bytes(x) {
