@@ -46,6 +46,20 @@ jobs:
         emcc -v
         sh emsdk_build.sh
 
+    - name: List files
+      id: pl
+      uses: Rishabh510/Path-lister-action@master
+      with:
+        path: "js_build/js-bindings"
+        type: ".js"
+
+    - name: Output results
+      run: |
+        echo "Found ${{ steps.pl.outputs.path_count }} file(s) with this extension:"
+        for i in ${{ steps.pl.outputs.paths }}; do
+        echo $i
+        done
+
     - name: Test JavaScript bindings
       run: |
         sh js_test.sh
