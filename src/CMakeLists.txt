@@ -1,41 +1,58 @@
-file(GLOB HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../include/dashbls/*.hpp)
+file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/dashbls/*.hpp)
 source_group("SrcHeaders" FILES ${HEADERS})
 
-add_library(dashbls
+list(APPEND bls_sources
   ${HEADERS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/privatekey.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bls.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/chaincode.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/elements.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/extendedprivatekey.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/extendedpublickey.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/legacy.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/schemes.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/threshold.cpp)
-
-target_include_directories(dashbls
-  PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    $<$<BOOL:${GMP_FOUND}>:${GMP_INCLUDES}>
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/dashbls
-    ${CMAKE_CURRENT_SOURCE_DIR}/../depends/mimalloc/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include
-    ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include
+  privatekey.cpp
+  bls.cpp
+  chaincode.cpp
+  elements.cpp
+  extendedprivatekey.cpp
+  extendedpublickey.cpp
+  legacy.cpp
+  schemes.cpp
+  threshold.cpp
+  ${blst_SOURCE_DIR}/src/server.c
 )
 
-target_compile_definitions(dashbls
-  PRIVATE
-    BLSALLOC_MIMALLOC=1
-)
+if(MSVC)
+  list(APPEND bls_sources
+    ${blst_SOURCE_DIR}/build/win64/add_mod_256-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/add_mod_384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/add_mod_384x384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/ct_inverse_mod_256-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/ct_is_square_mod_384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/ctq_inverse_mod_384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/ctx_inverse_mod_384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/div3w-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/mulq_mont_256-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/mulq_mont_384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/mulx_mont_256-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/mulx_mont_384-x86_64.asm
+    ${blst_SOURCE_DIR}/build/win64/sha256-x86_64.asm
+  )
+else()
+  list(APPEND bls_sources
+    ${blst_SOURCE_DIR}/build/assembly.S
+  )
+  add_compile_options(-fno-builtin)
+  add_compile_options(-fPIC)
+  add_compile_options(-Wall)
+  add_compile_options(-Wextra)
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+    add_compile_options(-mno-avx)
+  endif()
+endif()
 
+add_library(dashbls ${bls_sources})
+target_include_directories(dashbls PUBLIC ${blst_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include/dashbls/)
+target_compile_definitions(dashbls PRIVATE __BLST_PORTABLE__ BLSALLOC_MIMALLOC=1)
 target_link_libraries(dashbls
   PUBLIC
-    relic_s
     mimalloc-static
 )
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include/ DESTINATION include/dashbls)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include/ DESTINATION include/dashbls)
+install(FILES ${blst_SOURCE_DIR}/bindings/blst.h ${blst_SOURCE_DIR}/bindings/blst_aux.h DESTINATION include/dashbls)
 install(FILES ${HEADERS} DESTINATION include/dashbls)
 install(FILES $<TARGET_FILE:dashbls> DESTINATION lib)
 
@@ -47,8 +64,9 @@ if(BUILD_BLS_TESTS)
     target_link_options(runtest PRIVATE "-sEXPORTED_FUNCTIONS=_malloc")
   endif()
   target_link_libraries(runtest
-                        PRIVATE dashbls
-                        PRIVATE catch2)
+    PRIVATE
+    dashbls
+    catch2)
 
   if(EMSCRIPTEN)
     target_link_options(runtest PRIVATE "SHELL:-s MALLOC=emmalloc")

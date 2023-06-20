@@ -518,20 +518,6 @@ PYBIND11_MODULE(dashbls, m)
             },
             py::is_operator())
         .def(
-            "__mul__",
-            [](G1Element &self, const PrivateKey &other) {
-                RelicGuard guard;
-                return self * other;
-            },
-            py::is_operator())
-        .def(
-            "__rmul__",
-            [](G1Element &self, const PrivateKey &other) {
-                RelicGuard guard;
-                return other * self;
-            },
-            py::is_operator())
-        .def(
             "__and__",
             [](G1Element &self, G2Element &other) {
                 RelicGuard guard;
@@ -643,21 +629,6 @@ PYBIND11_MODULE(dashbls, m)
                 return self + other;
             },
             py::is_operator())
-        .def(
-            "__mul__",
-            [](G2Element &self, const PrivateKey &other) {
-                RelicGuard guard;
-                return self * other;
-            },
-            py::is_operator())
-        .def(
-            "__rmul__",
-            [](G2Element &self, const PrivateKey &other) {
-                RelicGuard guard;
-                return other * self;
-            },
-            py::is_operator())
-
         .def(
             "__repr__",
             [](const G2Element &ele) {
