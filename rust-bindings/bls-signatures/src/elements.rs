@@ -1,4 +1,6 @@
 use std::ffi::c_void;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 
 use bls_dash_sys::{CoreMPLDeriveChildPkUnhardened, G1ElementFree, G1ElementFromBytes, G1ElementGenerator, G1ElementGetFingerprint, G1ElementIsEqual, G1ElementSerialize, G1ElementCopy, G2ElementCopy, G2ElementFree, G2ElementFromBytes, G2ElementIsEqual, G2ElementSerialize, ThresholdPublicKeyRecover, ThresholdSignatureRecover};
 #[cfg(feature = "use_serde")]
@@ -17,7 +19,6 @@ pub type PublicKey = G1Element;
 #[cfg(feature = "dash_helpers")]
 pub type Signature = G2Element;
 
-#[derive(Debug)]
 pub struct G1Element {
     pub(crate) c_element: *mut c_void,
 }
@@ -25,6 +26,14 @@ pub struct G1Element {
 impl PartialEq for G1Element {
     fn eq(&self, other: &Self) -> bool {
         unsafe { G1ElementIsEqual(self.c_element, other.c_element) }
+    }
+}
+
+impl Debug for G1Element {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let g1_hex = hex::encode(self.to_bytes().as_slice());
+
+        write!(f, "G1Element({:?})", g1_hex)
     }
 }
 
@@ -181,7 +190,6 @@ impl Drop for G1Element {
     }
 }
 
-#[derive(Debug)]
 pub struct G2Element {
     pub(crate) c_element: *mut c_void,
 }
@@ -189,6 +197,14 @@ pub struct G2Element {
 impl PartialEq for G2Element {
     fn eq(&self, other: &Self) -> bool {
         unsafe { G2ElementIsEqual(self.c_element, other.c_element) }
+    }
+}
+
+impl Debug for G2Element {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let g2_hex = hex::encode(self.to_bytes().as_slice());
+
+        write!(f, "G2Element({:?})", g2_hex)
     }
 }
 
