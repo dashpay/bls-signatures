@@ -21,7 +21,6 @@ pub type PublicKey = G1Element;
 #[cfg(feature = "dash_helpers")]
 pub type Signature = G2Element;
 
-#[derive(Clone)]
 pub struct G1Element {
     pub(crate) c_element: Arc<*mut c_void>,
 }
@@ -126,7 +125,7 @@ impl G1Element {
                 .map(|(hash, element)| {
                     (
                         hash.as_ptr() as *mut c_void,
-                        element.c_element as *mut c_void,
+                        *element.c_element as *mut c_void,
                     )
                 })
                 .unzip();
@@ -135,7 +134,7 @@ impl G1Element {
             Ok(G1Element {
                 c_element: c_err_to_result(|did_err| {
                     ThresholdPublicKeyRecover(c_elements_ptr, len, c_hashes_ptr, len, did_err)
-                })?,
+                })?.into(),
             })
         }
     }
@@ -144,7 +143,7 @@ impl G1Element {
 impl Clone for G1Element {
     fn clone(&self) -> Self {
         unsafe {
-            G1Element{c_element: G1ElementCopy(self.c_element)}
+            G1Element{c_element: G1ElementCopy(*self.c_element).into()}
         }
     }
 }
@@ -263,7 +262,7 @@ impl G2Element {
                 .map(|(hash, element)| {
                     (
                         hash.as_ptr() as *mut c_void,
-                        element.c_element as *mut c_void,
+                        *element.c_element as *mut c_void,
                     )
                 })
                 .unzip();
@@ -272,7 +271,7 @@ impl G2Element {
             Ok(G2Element {
                 c_element: c_err_to_result(|did_err| {
                     ThresholdSignatureRecover(c_elements_ptr, len, c_hashes_ptr, len, did_err)
-                })?,
+                })?.into(),
             })
         }
     }
@@ -281,7 +280,7 @@ impl G2Element {
 impl Clone for G2Element {
     fn clone(&self) -> Self {
         unsafe {
-            G2Element{c_element: G2ElementCopy(self.c_element)}
+            G2Element{c_element: G2ElementCopy(*self.c_element).into()}
         }
     }
 }
