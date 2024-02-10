@@ -50,7 +50,7 @@ impl PrivateKey {
         Ok(G1Element {
             c_element: c_err_to_result(|did_err| unsafe {
                 PrivateKeyGetG1Element(self.c_private_key, did_err)
-            })?,
+            })?.into(),
         })
     }
 

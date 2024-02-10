@@ -85,7 +85,7 @@ impl ExtendedPublicKey {
 
     pub fn public_key(&self) -> G1Element {
         G1Element {
-            c_element: unsafe { BIP32ExtendedPublicKeyGetPublicKey(self.c_extended_public_key) },
+            c_element: unsafe { BIP32ExtendedPublicKeyGetPublicKey(self.c_extended_public_key) }.into(),
         }
     }
 }
