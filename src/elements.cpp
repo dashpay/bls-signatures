@@ -21,7 +21,15 @@ namespace bls {
 
 const size_t G1Element::SIZE;
 
-G1Element G1Element::FromBytes(const Bytes& bytes, bool fLegacy)
+G1Element G1Element::FromBytes(Bytes const bytes, bool fLegacy) {
+    G1Element ele = G1Element::FromBytesUnchecked(bytes, fLegacy);
+    if (!fLegacy) {
+        ele.CheckValid();
+    }
+    return ele;
+}
+
+G1Element G1Element::FromBytesUnchecked(Bytes const bytes, bool fLegacy)
 {
     if (bytes.size() != SIZE) {
         throw std::invalid_argument("G1Element::FromBytes: Invalid size");
@@ -74,10 +82,7 @@ G1Element G1Element::FromBytes(const Bytes& bytes, bool fLegacy)
         }
     }
     g1_read_bin(ele.p, buffer, G1Element::SIZE + 1);
-    if (!fLegacy) {
-        BLS::CheckRelicErrors();
-        ele.CheckValid();
-    }
+    BLS::CheckRelicErrors(!fLegacy);
     return ele;
 }
 
@@ -90,9 +95,16 @@ G1Element G1Element::FromNative(const g1_t element)
 {
     G1Element ele;
     g1_copy(ele.p, element);
-    ele.CheckValid();
     return ele;
 }
+
+G1Element G1Element::Copy() {
+    G1Element ele;
+    g1_copy(ele.p, this->p);
+
+    return ele;
+}
+
 
 G1Element G1Element::FromMessage(const std::vector<uint8_t>& message,
                                  const uint8_t* dst,
@@ -101,7 +113,7 @@ G1Element G1Element::FromMessage(const std::vector<uint8_t>& message,
     return FromMessage(Bytes(message), dst, dst_len);
 }
 
-G1Element G1Element::FromMessage(const Bytes& message,
+G1Element G1Element::FromMessage(Bytes const message,
                                  const uint8_t* dst,
                                  int dst_len)
 {
@@ -223,7 +235,15 @@ G1Element operator*(const bn_t& k, const G1Element& a) { return a * k; }
 
 const size_t G2Element::SIZE;
 
-G2Element G2Element::FromBytes(const Bytes& bytes, const bool fLegacy)
+G2Element G2Element::FromBytes(Bytes const bytes, const bool fLegacy) {
+    G2Element ele = G2Element::FromBytesUnchecked(bytes, fLegacy);
+    if (!fLegacy) {
+        ele.CheckValid();
+    }
+    return ele;
+}
+
+G2Element G2Element::FromBytesUnchecked(Bytes const bytes, const bool fLegacy)
 {
     if (bytes.size() != SIZE) {
         throw std::invalid_argument("G2Element::FromBytes: Invalid size");
@@ -234,6 +254,7 @@ G2Element G2Element::FromBytes(const Bytes& bytes, const bool fLegacy)
 
     if (fLegacy) {
         std::memcpy(buffer + 1, bytes.begin(), G2Element::SIZE);
+        buffer[0] = 0x00;
     } else {
         std::memcpy(buffer + 1, bytes.begin() + G2Element::SIZE / 2, G2Element::SIZE / 2);
         std::memcpy(buffer + 1 + G2Element::SIZE / 2, bytes.begin(), G2Element::SIZE / 2);
@@ -279,10 +300,7 @@ G2Element G2Element::FromBytes(const Bytes& bytes, const bool fLegacy)
     }
 
     g2_read_bin(ele.q, buffer, G2Element::SIZE + 1);
-    if (!fLegacy) {
-        BLS::CheckRelicErrors();
-        ele.CheckValid();
-    }
+    BLS::CheckRelicErrors(!fLegacy);
     return ele;
 }
 
@@ -295,7 +313,6 @@ G2Element G2Element::FromNative(const g2_t element)
 {
     G2Element ele;
     g2_copy(ele.q, (g2_st*)element);
-    ele.CheckValid();
     return ele;
 }
 
@@ -307,7 +324,7 @@ G2Element G2Element::FromMessage(const std::vector<uint8_t>& message,
     return FromMessage(Bytes(message), dst, dst_len, fLegacy);
 }
 
-G2Element G2Element::FromMessage(const Bytes& message,
+G2Element G2Element::FromMessage(Bytes const message,
                                  const uint8_t* dst,
                                  int dst_len,
                                  const bool fLegacy)
@@ -349,6 +366,14 @@ void G2Element::CheckValid() const {
 void G2Element::ToNative(g2_t output) const {
     g2_copy(output, (g2_st*)q);
 }
+
+G2Element G2Element::Copy() {
+    G2Element ele;
+    g2_copy(ele.q, this->q);
+
+    return ele;
+}
+
 
 G2Element G2Element::Negate() const
 {
@@ -440,15 +465,21 @@ G2Element operator*(const bn_t& k, const G2Element& a) { return a * k; }
 
 const size_t GTElement::SIZE;
 
-GTElement GTElement::FromBytes(const Bytes& bytes)
+GTElement GTElement::FromBytes(Bytes const bytes)
+{
+    GTElement ele = GTElement::FromBytesUnchecked(bytes);
+    if (gt_is_valid(*(gt_t*)&ele) == 0)
+        throw std::invalid_argument("GTElement is invalid");
+    return ele;
+}
+
+GTElement GTElement::FromBytesUnchecked(Bytes const bytes)
 {
     if (bytes.size() != SIZE) {
         throw std::invalid_argument("GTElement::FromBytes: Invalid size");
     }
     GTElement ele = GTElement();
     gt_read_bin(ele.r, bytes.begin(), GTElement::SIZE);
-    if (gt_is_valid(*(gt_t*)&ele) == 0)
-        throw std::invalid_argument("GTElement is invalid");
     BLS::CheckRelicErrors();
     return ele;
 }

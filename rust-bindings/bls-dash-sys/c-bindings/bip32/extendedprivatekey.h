@@ -19,7 +19,7 @@ typedef void* BIP32ExtendedPrivateKey;
 BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyFromBytes(
     const void* data,
     bool* didErr);
-BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyFromSeed(const void* data, bool* didErr);
+BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyFromSeed(const void* data, const size_t len, bool* didErr);
 BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyPrivateChild(
     const BIP32ExtendedPrivateKey sk,
     const uint32_t index,

@@ -1,21 +1,27 @@
 use std::ffi::c_void;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 
-use bls_dash_sys::{
-    CoreMPLDeriveChildPkUnhardened, G1ElementFree, G1ElementFromBytes, G1ElementGenerator,
-    G1ElementGetFingerprint, G1ElementIsEqual, G1ElementSerialize, G2ElementFree,
-    G2ElementFromBytes, G2ElementIsEqual, G2ElementSerialize,
-};
+use bls_dash_sys::{CoreMPLDeriveChildPkUnhardened, G1ElementFree, G1ElementFromBytes, G1ElementGenerator, G1ElementGetFingerprint, G1ElementIsEqual, G1ElementSerialize, G1ElementCopy, G2ElementCopy, G2ElementFree, G2ElementFromBytes, G2ElementIsEqual, G2ElementSerialize, ThresholdPublicKeyRecover, ThresholdSignatureRecover};
+#[cfg(feature = "use_serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::sync::Arc;
 
-use crate::{schemes::Scheme, utils::c_err_to_result, BlsError};
+use crate::{schemes::Scheme, utils::c_err_to_result, BlsError, BasicSchemeMPL};
 
 // TODO Split into modules
 
 pub const G1_ELEMENT_SIZE: usize = 48; // TODO somehow extract it from bls library
 pub const G2_ELEMENT_SIZE: usize = 96; // TODO somehow extract it from bls library
 
-#[derive(Debug, Clone)]
+#[cfg(feature = "dash_helpers")]
+pub type PublicKey = G1Element;
+
+#[cfg(feature = "dash_helpers")]
+pub type Signature = G2Element;
+
+#[derive(Clone)]
 pub struct G1Element {
     pub(crate) c_element: Arc<*mut c_void>,
 }
@@ -28,6 +34,14 @@ impl PartialEq for G1Element {
     }
 }
 
+impl Debug for G1Element {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let g1_hex = hex::encode(self.to_bytes().as_slice());
+
+        write!(f, "G1Element({:?})", g1_hex)
+    }
+}
+
 impl Eq for G1Element {}
 
 impl G1Element {
@@ -35,6 +49,16 @@ impl G1Element {
         let c_element = unsafe { G1ElementGenerator() };
 
         G1Element { c_element: c_element.into() }
+    }
+
+    #[cfg(feature = "dash_helpers")]
+    pub fn verify(&self, signature: &G2Element, message: &[u8]) -> bool {
+        self.verify_basic(signature, message)
+    }
+
+    pub fn verify_basic(&self, signature: &G2Element, message: &[u8]) -> bool {
+        let basic_scheme = BasicSchemeMPL::new();
+        basic_scheme.verify(self, message, signature)
     }
 
     pub(crate) fn from_bytes_with_legacy_flag(
@@ -61,15 +85,15 @@ impl G1Element {
         Self::from_bytes_with_legacy_flag(bytes, false)
     }
 
-    pub(crate) fn serialize_with_legacy_flag(&self, legacy: bool) -> Box<[u8; G1_ELEMENT_SIZE]> {
+    pub(crate) fn to_bytes_with_legacy_flag(&self, legacy: bool) -> Box<[u8; G1_ELEMENT_SIZE]> {
         unsafe {
             let malloc_ptr = G1ElementSerialize(*self.c_element, legacy);
             Box::from_raw(malloc_ptr as *mut _)
         }
     }
 
-    pub fn serialize(&self) -> Box<[u8; G1_ELEMENT_SIZE]> {
-        self.serialize_with_legacy_flag(false)
+    pub fn to_bytes(&self) -> Box<[u8; G1_ELEMENT_SIZE]> {
+        self.to_bytes_with_legacy_flag(false)
     }
 
     pub fn derive_child_public_key_unhardened(
@@ -91,6 +115,78 @@ impl G1Element {
     pub fn fingerprint(&self) -> u32 {
         self.fingerprint_with_legacy_flag(false)
     }
+
+    pub fn threshold_recover(
+        bls_ids_with_elements: &[(Vec<u8>, G1Element)],
+    ) -> Result<Self, BlsError> {
+        unsafe {
+            let len = bls_ids_with_elements.len();
+            let (c_hashes, c_elements): (Vec<_>, Vec<_>) = bls_ids_with_elements
+                .iter()
+                .map(|(hash, element)| {
+                    (
+                        hash.as_ptr() as *mut c_void,
+                        element.c_element as *mut c_void,
+                    )
+                })
+                .unzip();
+            let c_hashes_ptr = c_hashes.as_ptr() as *mut *mut c_void;
+            let c_elements_ptr = c_elements.as_ptr() as *mut *mut c_void;
+            Ok(G1Element {
+                c_element: c_err_to_result(|did_err| {
+                    ThresholdPublicKeyRecover(c_elements_ptr, len, c_hashes_ptr, len, did_err)
+                })?,
+            })
+        }
+    }
+}
+
+impl Clone for G1Element {
+    fn clone(&self) -> Self {
+        unsafe {
+            G1Element{c_element: G1ElementCopy(self.c_element)}
+        }
+    }
+}
+
+#[cfg(feature = "use_serde")]
+// Implement Serialize trait for G1Element
+impl Serialize for G1Element {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let bytes = *self.to_bytes();
+        serializer.serialize_bytes(&bytes)
+    }
+}
+
+#[cfg(feature = "use_serde")]
+// Implement Deserialize trait for G1Element
+impl<'de> Deserialize<'de> for G1Element {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct G1ElementVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for G1ElementVisitor {
+            type Value = G1Element;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a byte array representing a G1Element")
+            }
+
+            fn visit_bytes<E>(self, bytes: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                G1Element::from_bytes(bytes).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_bytes(G1ElementVisitor)
+    }
 }
 
 impl Drop for G1Element {
@@ -99,7 +195,6 @@ impl Drop for G1Element {
     }
 }
 
-#[derive(Debug)]
 pub struct G2Element {
     pub(crate) c_element: Arc<*mut c_void>,
 }
@@ -109,6 +204,14 @@ unsafe impl Send for G2Element {}
 impl PartialEq for G2Element {
     fn eq(&self, other: &Self) -> bool {
         unsafe { G2ElementIsEqual(*self.c_element, *other.c_element) }
+    }
+}
+
+impl Debug for G2Element {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let g2_hex = hex::encode(self.to_bytes().as_slice());
+
+        write!(f, "G2Element({:?})", g2_hex)
     }
 }
 
@@ -139,15 +242,87 @@ impl G2Element {
         Self::from_bytes_with_legacy_flag(bytes, false)
     }
 
-    pub(crate) fn serialize_with_legacy_flag(&self, legacy: bool) -> Box<[u8; G2_ELEMENT_SIZE]> {
+    pub(crate) fn to_bytes_with_legacy_flag(&self, legacy: bool) -> Box<[u8; G2_ELEMENT_SIZE]> {
         unsafe {
             let malloc_ptr = G2ElementSerialize(*self.c_element, legacy);
             Box::from_raw(malloc_ptr as *mut _)
         }
     }
 
-    pub fn serialize(&self) -> Box<[u8; G2_ELEMENT_SIZE]> {
-        self.serialize_with_legacy_flag(false)
+    pub fn to_bytes(&self) -> Box<[u8; G2_ELEMENT_SIZE]> {
+        self.to_bytes_with_legacy_flag(false)
+    }
+
+    pub fn threshold_recover(
+        bls_ids_with_elements: &[(Vec<u8>, G2Element)],
+    ) -> Result<Self, BlsError> {
+        unsafe {
+            let len = bls_ids_with_elements.len();
+            let (c_hashes, c_elements): (Vec<_>, Vec<_>) = bls_ids_with_elements
+                .iter()
+                .map(|(hash, element)| {
+                    (
+                        hash.as_ptr() as *mut c_void,
+                        element.c_element as *mut c_void,
+                    )
+                })
+                .unzip();
+            let c_hashes_ptr = c_hashes.as_ptr() as *mut *mut c_void;
+            let c_elements_ptr = c_elements.as_ptr() as *mut *mut c_void;
+            Ok(G2Element {
+                c_element: c_err_to_result(|did_err| {
+                    ThresholdSignatureRecover(c_elements_ptr, len, c_hashes_ptr, len, did_err)
+                })?,
+            })
+        }
+    }
+}
+
+impl Clone for G2Element {
+    fn clone(&self) -> Self {
+        unsafe {
+            G2Element{c_element: G2ElementCopy(self.c_element)}
+        }
+    }
+}
+
+#[cfg(feature = "use_serde")]
+// Implement Serialize trait for G1Element
+impl Serialize for G2Element {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let bytes = *self.to_bytes();
+        serializer.serialize_bytes(&bytes)
+    }
+}
+
+#[cfg(feature = "use_serde")]
+// Implement Deserialize trait for G1Element
+impl<'de> Deserialize<'de> for G2Element {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct G2ElementVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for G2ElementVisitor {
+            type Value = G2Element;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a byte array representing a G2Element")
+            }
+
+            fn visit_bytes<E>(self, bytes: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                G2Element::from_bytes(bytes).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_bytes(G2ElementVisitor)
     }
 }
 
@@ -173,7 +348,7 @@ mod tests {
         let sk = PrivateKey::key_gen(&scheme, seed).expect("unable to generate private key");
 
         let g1 = sk.g1_element().expect("cannot get G1 element");
-        let g1_bytes = g1.serialize();
+        let g1_bytes = g1.to_bytes();
         let g1_2 =
             G1Element::from_bytes(g1_bytes.as_ref()).expect("cannot build G1 element from bytes");
 
@@ -187,7 +362,7 @@ mod tests {
         let sk = PrivateKey::key_gen(&scheme, seed).expect("unable to generate private key");
 
         let g2 = scheme.sign(&sk, b"ayy");
-        let g2_bytes = g2.serialize();
+        let g2_bytes = g2.to_bytes();
         let g2_2 =
             G2Element::from_bytes(g2_bytes.as_ref()).expect("cannot build G2 element from bytes");
 
@@ -198,7 +373,7 @@ mod tests {
     fn should_generate_new_g1_element() {
         let g1_element = G1Element::generate();
 
-        assert_eq!(g1_element.serialize().len(), 48);
+        assert_eq!(g1_element.to_bytes().len(), 48);
     }
 
     #[test]

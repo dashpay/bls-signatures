@@ -29,39 +29,10 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules
 )
 
-include(FetchContent)
-
-FetchContent_Declare(Sodium
-  GIT_REPOSITORY https://github.com/AmineKhaldi/libsodium-cmake.git
-  # Latest commit at the moment this was added here
-  # Anchored to libsodium v1.0.18
-  GIT_TAG f73a3fe1afdc4e37ac5fe0ddd401bf521f6bba65
-)
-set(SODIUM_PCH "on" CACHE STRING "")
-set(SODIUM_DISABLE_TESTS "on" CACHE STRING "")
-set(SODIUM_CHIA_MINIMAL "on" CACHE STRING "")
-FetchContent_MakeAvailable(Sodium)
-
-if (DEFINED ENV{RELIC_MAIN})
-  set(RELIC_GIT_TAG "origin/main")
-else ()
-  # This is currently anchored to upstream aecdcae7956f542fbee2392c1f0feb0a8ac41dc5
-  set(RELIC_GIT_TAG "1d98e5abf3ca5b14fd729bd5bcced88ea70ecfd7")
-endif ()
-
-message(STATUS "Relic will be built from: ${RELIC_GIT_TAG}")
-
-FetchContent_Declare(
-  relic
-  GIT_REPOSITORY https://github.com/Chia-Network/relic.git
-  GIT_TAG ${RELIC_GIT_TAG}
-)
-
-string(CONCAT RELIC_SRC ${FETCHCONTENT_BASE_DIR} "/relic-src")
-
 # Relic related options
 
-set(STBIN TRUE)
+set(STBIN "off" CACHE STRING "Relic - Build static binaries")
+
 find_package(gmp)
 if (GMP_FOUND)
   message(STATUS "Found libgmp")
@@ -85,7 +56,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   set(TIMER "ANSI" CACHE STRING "")
-  set(MULTI "" CACHE STRING "")
+  set(MULTI "OPENMP" CACHE STRING "")
 else()
   set(TIMER "CYCLE" CACHE STRING "")
   set(MULTI "PTHREAD" CACHE STRING "")
@@ -109,8 +80,6 @@ else()
   set(FP_QNRES "on" CACHE STRING "")
 endif()
 
-set(STBIN "OFF" CACHE STRING "")
-
 set(FP_METHD "INTEG;INTEG;INTEG;MONTY;LOWER;SLIDE" CACHE STRING "")
 
 if(MSVC)
@@ -132,14 +101,22 @@ set(QUIET "on" CACHE STRING "Relic - Build with printing disabled")
 set(PP_EXT "LAZYR" CACHE STRING "")
 set(PP_METHD "LAZYR;OATEP" CACHE STRING "")
 
-FetchContent_MakeAvailable(relic)
+# Disable mimalloc shared libraries and tests, enable secure mode
+set(MI_SECURE       "on" CACHE STRING "")
 
-message(STATUS "Patching Relic to make setjmp.h inclusion conditional")
+set(MI_BUILD_SHARED "off" CACHE STRING "")
+set(MI_BUILD_TESTS  "off" CACHE STRING "")
+set(MI_OVERRIDE     "off" CACHE STRING "")
 
-execute_process(
-  COMMAND bash -c "git apply ${CMAKE_SOURCE_DIR}/setjmp_patch.diff"
-  WORKING_DIRECTORY ${RELIC_SRC}
-)
+add_subdirectory(depends/relic)
+add_subdirectory(depends/mimalloc)
+
+#message(STATUS "Patching Relic to make setjmp.h inclusion conditional")
+#
+#execute_process(
+#  COMMAND bash -c "git apply ${CMAKE_SOURCE_DIR}/setjmp_patch.diff"
+#  WORKING_DIRECTORY ${RELIC_SRC}
+#)
 
 add_subdirectory(src)
 

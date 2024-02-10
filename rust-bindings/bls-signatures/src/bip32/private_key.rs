@@ -14,7 +14,7 @@ use crate::{
     BlsError, G1Element, PrivateKey,
 };
 
-pub const BIP32_EXTENDED_PRIVATE_KEY_SIZE: usize = 93;
+pub const BIP32_EXTENDED_PRIVATE_KEY_SIZE: usize = 77;
 
 #[derive(Debug)]
 pub struct ExtendedPrivateKey {
@@ -55,7 +55,7 @@ impl ExtendedPrivateKey {
     pub fn from_seed(bytes: &[u8]) -> Result<Self, BlsError> {
         Ok(ExtendedPrivateKey {
             c_extended_private_key: c_err_to_result(|did_err| unsafe {
-                BIP32ExtendedPrivateKeyFromSeed(bytes.as_ptr() as *const _, did_err)
+                BIP32ExtendedPrivateKeyFromSeed(bytes.as_ptr() as *const _, bytes.len(), did_err)
             })?,
         })
     }
@@ -189,5 +189,17 @@ mod tests {
             .expect("cannot get extended public key");
 
         assert_eq!(private_key.public_key(), Ok(public_key.public_key()));
+    }
+
+    #[test]
+    fn fingerprint_for_short_bip32_seed() {
+        assert_eq!(
+            ExtendedPrivateKey::from_seed(&[1u8, 50, 6, 244, 24, 199, 1, 25])
+                .expect("cannot generate extended private key")
+                .public_key()
+                .expect("cannot get public key from extended private key")
+                .fingerprint_legacy(),
+            0xa4700b27
+        );
     }
 }

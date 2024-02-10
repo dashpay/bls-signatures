@@ -33,6 +33,8 @@ extern "C" {
 
     pub fn G1ElementNegate(el: G1Element) -> G1Element;
 
+    pub fn G1ElementCopy(el: G1Element) -> G1Element;
+
     pub fn G1ElementSerialize(el: G1Element, legacy: bool) -> *mut ::std::os::raw::c_void;
 
     pub fn G1ElementFree(el: G1Element);
@@ -57,6 +59,8 @@ extern "C" {
 
     pub fn G2ElementNegate(el: G2Element) -> G2Element;
 
+    pub fn G2ElementCopy(el: G2Element) -> G2Element;
+
     pub fn G2ElementSerialize(el: G2Element, legacy: bool) -> *mut ::std::os::raw::c_void;
 
     pub fn G2ElementFree(el: G2Element);
@@ -67,7 +71,7 @@ extern "C" {
         didErr: *mut bool,
     ) -> PrivateKey;
 
-    pub fn PrivateKeyFromSeedBIP32(data: *const ::std::os::raw::c_void) -> PrivateKey;
+    pub fn PrivateKeyFromSeedBIP32(data: *const ::std::os::raw::c_void, len: usize) -> PrivateKey;
 
     pub fn PrivateKeyAggregate(sks: *mut *mut ::std::os::raw::c_void, len: usize) -> PrivateKey;
 
@@ -386,6 +390,7 @@ extern "C" {
 
     pub fn BIP32ExtendedPrivateKeyFromSeed(
         data: *const ::std::os::raw::c_void,
+        len: usize,
         didErr: *mut bool,
     ) -> BIP32ExtendedPrivateKey;
 

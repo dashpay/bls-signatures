@@ -12,6 +12,8 @@ pub mod bip32;
 use std::{error::Error, fmt::Display};
 
 pub use elements::{G1Element, G2Element, G1_ELEMENT_SIZE, G2_ELEMENT_SIZE};
+#[cfg(feature = "dash_helpers")]
+pub use elements::{PublicKey, Signature};
 pub use private_key::{PrivateKey, PRIVATE_KEY_SIZE};
 pub use schemes::{AugSchemeMPL, BasicSchemeMPL, LegacySchemeMPL, Scheme};
 
@@ -46,7 +48,7 @@ mod tests {
             PrivateKey::key_gen(&scheme, seed).expect("unable to generate private key");
 
         // Also test private key serialization
-        let private_key_bytes = private_key_before.serialize();
+        let private_key_bytes = private_key_before.to_bytes();
         let private_key = PrivateKey::from_bytes(private_key_bytes.as_slice(), false)
             .expect("cannot build private key from bytes");
         drop(private_key_bytes);

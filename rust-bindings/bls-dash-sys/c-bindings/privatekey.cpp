@@ -39,11 +39,9 @@ PrivateKey PrivateKeyFromBytes(const void* data, const bool modOrder, bool* didE
     return skPtr;
 }
 
-PrivateKey PrivateKeyFromSeedBIP32(const void* data) {
+PrivateKey PrivateKeyFromSeedBIP32(const void* data, const size_t len) {
     return new bls::PrivateKey(
-        bls::PrivateKey::FromSeedBIP32(
-            bls::Bytes((uint8_t*)data, bls::PrivateKey::PRIVATE_KEY_SIZE)
-        )
+        bls::PrivateKey::FromSeedBIP32(bls::Bytes((uint8_t*)data, len))
     );
 }
 

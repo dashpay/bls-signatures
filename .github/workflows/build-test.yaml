@@ -1,80 +1,72 @@
-name:  Build and Test C++, Javascript, and Python
+name: Build and test library
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  # SHA is added to the end if on `main` to let all main workflows run
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main') && github.sha || '' }}
+  cancel-in-progress: true
 
 jobs:
-  build_wheels:
-    name: Build and Test on ${{ matrix.os }} CPython ${{ matrix.python }}
+  build:
+    name: ${{ matrix.os }}, ${{ matrix.builder }}, ${{ matrix.compiler.cc }}, ${{ matrix.backend }} backend
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
-        python: ['3.7', '3.8', '3.9']
-
+        os: [ macos-11, ubuntu-20.04 ]
+        builder: [ cmake, autotools ]
+        compiler:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+        backend: [ easy, gmp ]
     steps:
-    - name: Cancel previous runs on the same branch
-      if: ${{ github.ref != 'refs/heads/main' }}
-      uses: styfle/cancel-workflow-action@0.7.0
-      with:
-        access_token: ${{ github.token }}
-
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    - uses: actions/setup-python@v2
-      name: Install Python
-      with:
-        python-version: ${{ matrix.python }}
-
-    - name: Ubuntu build C++ and test with valgrind
+    - name: Prepare build system for Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get update
-        sudo apt-get install -qq --yes valgrind snap libgmp-dev libsodium-dev
-        sudo apt-get remove --purge cmake -y
-        sudo snap install cmake --classic
+        sudo apt-get install -qq --yes valgrind libgmp-dev cmake
         hash -r
         cmake --version
-        mkdir -p build
-        cd build
-        cmake ../
-        cmake --build . -- -j 6
-        echo "Running ./src/runtest"
-        ./src/runtest
-        valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all  ./src/runtest
 
-    - name: Mac OS build C++ and test
+    - name: Prepare build system for macOS
       if: startsWith(matrix.os, 'macos')
       run: |
         ls -l
         export MACOSX_DEPLOYMENT_TARGET=10.14
-        mkdir -p build
-        ls -l build
-        cd build
-        cmake ../
+        brew install autoconf automake gmp pkg-config
+
+    - name: Build library using CMake
+      if: startsWith(matrix.builder, 'cmake')
+      run: |
+        mkdir -p build && cd build
+        CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake .. -DBUILD_BLS_PYTHON_BINDINGS=0 -DARITH=${{ matrix.backend }}
         cmake --build . -- -j 6
-        echo "Running ./src/runtest"
-        ./src/runtest
+        mv src/runtest ..
 
-    - name: Test pure python implementation
+    - name: Build library using GNU Autotools
+      if: startsWith(matrix.builder, 'autotools')
       run: |
-        python python-impl/impl-test.py
+        ./autogen.sh
+        CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} ./configure --with-backend=${{ matrix.backend }}
+        make -j8
 
-    - name: Install emsdk
-      uses: mymindstorm/setup-emsdk@v9
+    - name: Run tests
+      run: ./runtest
 
-    - name: Test javascript bindings
-      run: |
-        emcc -v
-        sh emsdk_build.sh
-        sh js_test.sh
-
-    - uses: actions/setup-go@v2
-      with:
-        go-version: "^1.17"
-
-    - name: Test go bindings
-      run: |
-        cd go-bindings
-        make
+    - name: Run valgrind on Ubuntu
+      if: startsWith(matrix.os, 'ubuntu')
+      run: valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all ./runtest

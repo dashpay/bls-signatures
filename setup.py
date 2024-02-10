@@ -176,7 +176,7 @@ class BuildExt(build_ext):
                 opts.append("-fvisibility=hidden")
         elif ct == "msvc":
             if sys.version_info < (3, 9):
-                ver_flag = '/DVERSION_INFO=\\"%s\\"'
+                ver_flag = '/DVERSION_INFO=\"%s\"'
             else:
                 ver_flag = '-DVERSION_INFO="%s"'
             opts.append(ver_flag % self.distribution.get_version())
@@ -196,8 +196,8 @@ if platform.system() == "Windows":
         long_description_content_type="text/markdown",
         url="https://github.com/Chia-Network/bls-signatures",
         python_requires=">=3.7",
-        setup_requires=["pybind11>=2.5.0"],
-        install_requires=["pybind11>=2.5.0"],
+        setup_requires=["pybind11>=2.10.0"],
+        install_requires=["pybind11>=2.10.0"],
         ext_modules=ext_modules,
         cmdclass={"build_ext": BuildExt},
         zip_safe=False,

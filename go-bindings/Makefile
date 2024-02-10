@@ -13,18 +13,21 @@ CURR_DIR := $(dir $(MAKEFILE_PATH))
 
 CGO_ENABLED := 1
 
-CGO_LDFLAGS ?= "-L$(CURR_DIR)../build/_deps/sodium-build \
--L$(CURR_DIR)../build/_deps/relic-build/lib \
+CGO_LDFLAGS ?= "\
+-L$(CURR_DIR)../build/depends/mimalloc \
+-L$(CURR_DIR)../build/depends/relic/lib \
 -L$(CURR_DIR)../build/src \
--lbls-dash -lrelic_s -lgmp"
+-ldashbls -lrelic_s -lmimalloc-secure -lgmp"
 
-CGO_CXXFLAGS ?= "-I$(CURR_DIR)../build/_deps/relic-src/include \
--I$(CURR_DIR)../build/_deps/relic-build/include \
--I$(CURR_DIR)../build/src"
+CGO_CXXFLAGS ?= "\
+-I$(CURR_DIR)../build/depends/relic/include \
+-I$(CURR_DIR)../depends/mimalloc/include \
+-I$(CURR_DIR)../depends/relic/include \
+-I$(CURR_DIR)../include"
 
 prepare:
-	@mkdir -p ../build/src/bls-dash
-	cp -rv ../src/* ../build/src/bls-dash
+	@mkdir -p ../build/src/dashbls
+	cp -rv ../src/* ../build/src/dashbls
 
 fmt:  ## Run go fmt to format Go files
 	$(GO) fmt

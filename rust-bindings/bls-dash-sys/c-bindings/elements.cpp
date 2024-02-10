@@ -83,6 +83,10 @@ G1Element G1ElementNegate(const G1Element el) {
     return new bls::G1Element(elPtr->Negate());
 }
 
+G1Element G1ElementCopy(const G1Element el) {
+    return new bls::G1Element(((bls::G1Element*)el)->Copy());
+}
+
 void G1ElementFree(const G1Element el) {
     const bls::G1Element* elPtr = (bls::G1Element*)el;
     delete elPtr;
@@ -146,6 +150,10 @@ G2Element G2ElementMul(const G2Element el, const PrivateKey sk) {
 G2Element G2ElementNegate(const G2Element el) {
     const bls::G2Element* elPtr = (bls::G2Element*)el;
     return new bls::G2Element(elPtr->Negate());
+}
+
+G2Element G2ElementCopy(const G1Element el) {
+    return new bls::G2Element(((bls::G2Element*)el)->Copy());
 }
 
 void G2ElementFree(const G2Element el) {

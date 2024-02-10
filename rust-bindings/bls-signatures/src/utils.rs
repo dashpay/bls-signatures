@@ -31,6 +31,7 @@ pub struct SecureBox {
 }
 
 impl SecureBox {
+    #[allow(dead_code)]
     pub(crate) fn new(len: usize) -> Self {
         SecureBox {
             c_sec_alloc: unsafe { SecAllocBytes(len) },

@@ -2,7 +2,7 @@ use crate::{BlsError, G1Element, G2Element, G1_ELEMENT_SIZE, G2_ELEMENT_SIZE};
 
 impl G1Element {
     pub fn serialize_legacy(&self) -> Box<[u8; G1_ELEMENT_SIZE]> {
-        self.serialize_with_legacy_flag(true)
+        self.to_bytes_with_legacy_flag(true)
     }
 
     pub fn from_bytes_legacy(bytes: &[u8]) -> Result<Self, BlsError> {
@@ -20,6 +20,6 @@ impl G2Element {
     }
 
     pub fn serialize_legacy(&self) -> Box<[u8; G2_ELEMENT_SIZE]> {
-        self.serialize_with_legacy_flag(true)
+        self.to_bytes_with_legacy_flag(true)
     }
 }

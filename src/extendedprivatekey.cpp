@@ -47,7 +47,7 @@ ExtendedPrivateKey ExtendedPrivateKey::FromSeed(const Bytes& bytes) {
     bn_mod_basic(*skBn, *skBn, order);
     bn_write_bin(ILeft, PrivateKey::PRIVATE_KEY_SIZE, *skBn);
 
-    ExtendedPrivateKey esk(ExtendedPublicKey::VERSION, 0, 0, 0,
+    ExtendedPrivateKey esk(ExtendedPublicKey::REVISION, 0, 0, 0,
                            ChainCode::FromBytes(Bytes(IRight, ChainCode::SIZE)),
                            PrivateKey::FromBytes(Bytes(ILeft, PrivateKey::PRIVATE_KEY_SIZE)));
 

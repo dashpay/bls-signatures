@@ -17,7 +17,8 @@
 #include <thread>
 
 #include "bls.hpp"
-#include "catch.hpp"
+#include <catch2/catch.hpp>
+
 extern "C" {
 #include "relic.h"
 }
@@ -55,7 +56,7 @@ void TestHKDF(string ikm_hex, string salt_hex, string info_hex, string prk_expec
 
 TEST_CASE("class PrivateKey") {
     uint8_t buffer[PrivateKey::PRIVATE_KEY_SIZE];
-    memcmp(buffer, getRandomSeed().data(), PrivateKey::PRIVATE_KEY_SIZE);
+    memcpy(buffer, getRandomSeed().data(), PrivateKey::PRIVATE_KEY_SIZE);
     SECTION("Copy {constructor|assignment operator}") {
         PrivateKey pk1 = PrivateKey::RandomPrivateKey();
         PrivateKey pk2 = PrivateKey::RandomPrivateKey();
@@ -1456,6 +1457,110 @@ TEST_CASE("Threshold Signatures") {
         REQUIRE(recSk == sks[0]);
         REQUIRE(recPk == pks[0]);
         REQUIRE(recSig == sig);
+    }
+}
+
+TEST_CASE("CheckValid")
+{
+    SECTION("Valid points should succeed") {
+        vector<uint8_t> seed(32, 0x05);
+        vector<uint8_t> msg1 = {10, 11, 12};
+
+        PrivateKey sk1 = BasicSchemeMPL().KeyGen(seed);
+        G1Element pk1 = BasicSchemeMPL().SkToG1(sk1);
+        pk1.CheckValid();
+
+        G2Element sig1 = AugSchemeMPL().Sign(sk1, msg1);
+        sig1.CheckValid();
+    }
+
+    SECTION("Invalid G1 points should not succeed")
+    {
+        string badPointHex =
+            "8d5d0fb73b9c92df4eab4216e48c3e358578b4cc30f82c268bd6fef3bd34b558628daf1afef798d4c3b0fcd8b28c8973";
+
+        // FromBytes throws
+        REQUIRE_THROWS(
+            G1Element::FromBytes(Bytes(Util::HexToBytes(badPointHex))));
+
+        // FromBytesUnchecked does not throw
+        G1Element pk =
+            G1Element::FromBytesUnchecked(Bytes(Util::HexToBytes(badPointHex)));
+        REQUIRE(pk.IsValid() == false);
+        REQUIRE_THROWS(pk.CheckValid());
+
+        vector<uint8_t> seed(32, 0x05);
+        vector<uint8_t> msg1 = {10, 11, 12};
+        PrivateKey sk1 = BasicSchemeMPL().KeyGen(seed);
+        G1Element pk1 = BasicSchemeMPL().SkToG1(sk1);
+        G2Element sig1 = AugSchemeMPL().Sign(sk1, msg1);
+        REQUIRE(AugSchemeMPL().Verify(pk, msg1, sig1) == false);
+    }
+
+    SECTION("Invalid G2 points should not succeed") {
+        g2_t point_native;
+        g2_set_infty(point_native);
+        fp2_rand(point_native->x);
+        fp2_rand(point_native->y);
+        fp2_rand(point_native->z);
+
+        G2Element point = G2Element::FromNative(point_native);
+        REQUIRE(point.IsValid() == false);
+        REQUIRE_THROWS(point.CheckValid());
+
+        auto badSer = point.Serialize();
+        std::cout <<Util::HexStr(badSer) << std::endl;
+
+        REQUIRE_THROWS(G2Element::FromByteVector(badSer));
+    }
+}
+
+TEST_CASE("CheckValid for Legacy")
+{
+    SECTION("Invalid G1 points should throw in CheckValid but not in FromBytes")
+    {
+        std::map<std::string, bool> vecPointsHex{
+            {"11df3a748b713460f9b21083315c0dca1742b7962ca98685be4094d302e84b0884a04c1a55beb0ed921dae1dd66c0111", true},
+            {"11df3a748b713460f9b21083315c0dca1742b7962ca98685be4094d302e84b0884a04c1a55beb0ed921dae1dd66c0a11", false},
+        };
+
+        for (const auto& pair : vecPointsHex) {
+            const auto& strPointHex = pair.first;
+            const auto& valid = pair.second;
+
+            // FromBytes does not throw
+            G1Element::FromBytes(Bytes(Util::HexToBytes(strPointHex)), true);
+            // FromBytesUnchecked does not throw
+            G1Element pk = G1Element::FromBytesUnchecked(Bytes(Util::HexToBytes(strPointHex)), true);
+
+            REQUIRE(pk.IsValid() == valid);
+            if (!valid) {
+                REQUIRE_THROWS(pk.CheckValid());
+            }
+        }
+    }
+
+    SECTION("Invalid G2 points should throw in CheckValid but not in FromBytes")
+    {
+        std::map<std::string, bool> vecPointsHex{
+            {"0888879c99852460912fd28c7a9138926c1e87fd6609fd2d3d307764e49feb85702fd8f9b3b836bc11f7ce151b769dc70b760879d26f8c33a29e24f69297f45ef028f0794e63ddb0610db7de1a608b6d6a2129ada62b845004a408f651fd44a5", true},
+            {"0888879c99852460912fd28c7a9138926c1e87fd6609fd2d3d307764e49feb85702fd8f9b3b836bc11f7ce151b769dc70b760879d26f8c33a29e24f69297f45ef028f0794e63ddb0610db7de1a608b6d6a2129ada62b845004a408f651fd44a6", false},
+        };
+
+        for (const auto& pair : vecPointsHex) {
+            const auto& strPointHex = pair.first;
+            const auto& valid = pair.second;
+
+            // FromBytes does not throw
+            G2Element::FromBytes(Bytes(Util::HexToBytes(strPointHex)), true);
+            // FromBytesUnchecked does not throw
+            G2Element sig = G2Element::FromBytesUnchecked(Bytes(Util::HexToBytes(strPointHex)), true);
+
+            REQUIRE(sig.IsValid() == valid);
+            if (!valid) {
+                REQUIRE_THROWS(sig.CheckValid());
+            }
+        }
     }
 }
 

@@ -14,6 +14,10 @@
 
 #include "bls.hpp"
 
+#if BLSALLOC_MIMALLOC
+#include "mimalloc.h"
+#endif
+
 #if BLSALLOC_SODIUM
 #include "sodium.h"
 #endif
@@ -45,7 +49,9 @@ bool BLS::Init()
     if (ALLOC != AUTO) {
         throw std::runtime_error("Must have ALLOC == AUTO");
     }
-#if BLSALLOC_SODIUM
+#if BLSALLOC_MIMALLOC
+    SetSecureAllocator(mi_malloc, mi_free);
+#elif BLSALLOC_SODIUM
     if (sodium_init() < 0) {
         throw std::runtime_error("libsodium init failed");
     }
@@ -72,14 +78,16 @@ void BLS::SetSecureAllocator(
 }
 
 
-void BLS::CheckRelicErrors()
+void BLS::CheckRelicErrors(bool should_throw)
 {
     if (!core_get()) {
         throw std::runtime_error("Library not initialized properly. Call BLS::Init()");
     }
     if (core_get()->code != RLC_OK) {
         core_get()->code = RLC_OK;
-        throw std::invalid_argument("Relic library error");
+        if (should_throw) {
+            throw std::invalid_argument("Relic library error");
+        }
     }
 }
 

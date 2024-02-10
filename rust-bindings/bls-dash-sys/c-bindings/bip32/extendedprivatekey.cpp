@@ -21,12 +21,12 @@ BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyFromBytes(const void* data, bool*
     return el;
 }
 
-BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyFromSeed(const void* data, bool* didErr)
+BIP32ExtendedPrivateKey BIP32ExtendedPrivateKeyFromSeed(const void* data, const size_t len, bool* didErr)
 {
     bls::ExtendedPrivateKey* el = nullptr;
     try {
         el = new bls::ExtendedPrivateKey(bls::ExtendedPrivateKey::FromSeed(
-            bls::Bytes((uint8_t*)(data), bls::ExtendedPrivateKey::SIZE)));
+            bls::Bytes((uint8_t*)(data), len)));
     } catch (const std::exception& ex) {
         gErrMsg = ex.what();
         *didErr = true;

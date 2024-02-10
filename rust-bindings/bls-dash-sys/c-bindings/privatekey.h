@@ -24,7 +24,7 @@ extern "C" {
 typedef void* PrivateKey;
 
 PrivateKey PrivateKeyFromBytes(const void* data, const bool modOrder, bool* didErr);
-PrivateKey PrivateKeyFromSeedBIP32(const void* data);
+PrivateKey PrivateKeyFromSeedBIP32(const void* data, const size_t len);
 PrivateKey PrivateKeyAggregate(void** sks, const size_t len);
 G1Element PrivateKeyGetG1Element(const PrivateKey sk, bool* didErr);
 G2Element PrivateKeyGetG2Element(const PrivateKey sk, bool* didErr);

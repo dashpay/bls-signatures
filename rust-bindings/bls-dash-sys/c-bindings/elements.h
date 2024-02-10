@@ -35,6 +35,7 @@ bool G1ElementIsEqual(const G1Element el1, const G1Element el2);
 G1Element G1ElementAdd(const G1Element el1, const G1Element el2);
 G1Element G1ElementMul(const G1Element el, const PrivateKey sk);
 G1Element G1ElementNegate(const G1Element el);
+G1Element G1ElementCopy(const G1Element el);
 void* G1ElementSerialize(const G1Element el, const bool legacy);
 void G1ElementFree(const G1Element el);
 
@@ -47,6 +48,7 @@ bool G2ElementIsEqual(const G2Element el1, const G2Element el2);
 G2Element G2ElementAdd(const G2Element el1, const G2Element el2);
 G2Element G2ElementMul(const G2Element el, const PrivateKey sk);
 G2Element G2ElementNegate(const G2Element el);
+G2Element G2ElementCopy(const G2Element el);
 void* G2ElementSerialize(const G2Element el, const bool legacy);
 void G2ElementFree(const G2Element el);
 

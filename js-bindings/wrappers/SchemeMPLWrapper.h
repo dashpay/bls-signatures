@@ -15,7 +15,7 @@
 #ifndef JS_BINDINGS_WRAPPERS_SCHEMEMPLWRAPPER_H_
 #define JS_BINDINGS_WRAPPERS_SCHEMEMPLWRAPPER_H_
 
-#include "../helpers.h"
+#include <helpers.h>
 #include "JSWrapper.h"
 #include "G1ElementWrapper.h"
 #include "PrivateKeyWrapper.h"
@@ -79,6 +79,15 @@ template <typename SchemeMPL> class SchemeMPLWrapper : public JSWrapper<SchemeMP
 
   static G1ElementWrapper DeriveChildPkUnhardened(const G1ElementWrapper &pk, uint32_t index) {
     return G1ElementWrapper(mpl.DeriveChildPkUnhardened(pk.GetWrappedInstance(), index));
+  }
+
+  static bool VerifySecure(val pubkeyArray, const G2ElementWrapper &signature, val messageVal) {
+    std::vector<G1Element> pubkeys = G1ElementWrapper::Unwrap
+        (helpers::toVectorFromJSArray<G1ElementWrapper>(pubkeyArray));
+
+    std::vector <uint8_t> message = helpers::toVector(messageVal);
+
+    return mpl.VerifySecure(pubkeys, signature.GetWrappedInstance(), message);
   }
 
 protected:
