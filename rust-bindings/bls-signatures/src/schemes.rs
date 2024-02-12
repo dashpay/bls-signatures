@@ -26,7 +26,7 @@ pub trait Scheme {
     ) -> bool {
         let mut g1_pointers = public_keys
             .into_iter()
-            .map(|g1| *g1.c_element)
+            .map(|g1| g1.c_element)
             .collect::<Vec<_>>();
 
         unsafe {
@@ -34,7 +34,7 @@ pub trait Scheme {
                 self.as_mut_ptr(),
                 g1_pointers.as_mut_ptr(),
                 g1_pointers.len(),
-                *signature.c_element,
+                signature.c_element,
                 message.as_ptr() as *const _,
                 message.len(),
             )
@@ -47,7 +47,7 @@ pub trait Scheme {
     ) -> G1Element {
         let mut g1_pointers = public_keys
             .into_iter()
-            .map(|g1| *g1.c_element)
+            .map(|g1| g1.c_element)
             .collect::<Vec<_>>();
         G1Element {
             c_element: unsafe {
@@ -56,12 +56,12 @@ pub trait Scheme {
                     g1_pointers.as_mut_ptr(),
                     g1_pointers.len(),
                 )
-            }.into(),
+            },
         }
     }
 
     fn aggregate_sigs<'a>(&self, sigs: impl IntoIterator<Item = &'a G2Element>) -> G2Element {
-        let mut g2_pointers = sigs.into_iter().map(|g2| *g2.c_element).collect::<Vec<_>>();
+        let mut g2_pointers = sigs.into_iter().map(|g2| g2.c_element).collect::<Vec<_>>();
         G2Element {
             c_element: unsafe {
                 CoreMPLAggregateSigs(
@@ -69,7 +69,7 @@ pub trait Scheme {
                     g2_pointers.as_mut_ptr(),
                     g2_pointers.len(),
                 )
-            }.into(),
+            },
         }
     }
 
@@ -94,7 +94,7 @@ fn prepare_aggregate_verify_args<'a>(
 ) -> AggregateVerifyArgs {
     let g1_pointers = public_keys
         .into_iter()
-        .map(|g1| *g1.c_element)
+        .map(|g1| g1.c_element)
         .collect::<Vec<_>>();
 
     let mut messages_pointers = Vec::new();
@@ -138,7 +138,7 @@ impl Scheme for BasicSchemeMPL {
                     message.as_ptr() as *const _,
                     message.len(),
                 )
-            }.into(),
+            },
         }
     }
 
@@ -146,10 +146,10 @@ impl Scheme for BasicSchemeMPL {
         unsafe {
             CoreMPLVerify(
                 self.scheme,
-                *public_key.c_element,
+                public_key.c_element,
                 message.as_ptr() as *const _,
                 message.len(),
-                *signature.c_element,
+                signature.c_element,
             )
         }
     }
@@ -174,7 +174,7 @@ impl Scheme for BasicSchemeMPL {
                 messages_pointers.as_mut_ptr() as *mut _,
                 messages_lengthes.as_mut_ptr() as *mut _,
                 messages_pointers.len(),
-                *signature.c_element,
+                signature.c_element,
             )
         }
     }
@@ -206,7 +206,7 @@ impl Scheme for LegacySchemeMPL {
                     message.as_ptr() as *const _,
                     message.len(),
                 )
-            }.into(),
+            },
         }
     }
 
@@ -214,10 +214,10 @@ impl Scheme for LegacySchemeMPL {
         unsafe {
             LegacySchemeMPLVerify(
                 self.scheme,
-                *public_key.c_element,
+                public_key.c_element,
                 message.as_ptr() as *const _,
                 message.len(),
-                *signature.c_element,
+                signature.c_element,
             )
         }
     }
@@ -230,7 +230,7 @@ impl Scheme for LegacySchemeMPL {
     ) -> bool {
         let mut g1_pointers = public_keys
             .into_iter()
-            .map(|g1| *g1.c_element)
+            .map(|g1| g1.c_element)
             .collect::<Vec<_>>();
 
         unsafe {
@@ -238,7 +238,7 @@ impl Scheme for LegacySchemeMPL {
                 self.as_mut_ptr(),
                 g1_pointers.as_mut_ptr(),
                 g1_pointers.len(),
-                *signature.c_element,
+                signature.c_element,
                 message.as_ptr() as *const _,
                 message.len(),
             )
@@ -265,7 +265,7 @@ impl Scheme for LegacySchemeMPL {
                 messages_pointers.as_mut_ptr() as *mut _,
                 messages_lengthes.as_mut_ptr() as *mut _,
                 messages_pointers.len(),
-                *signature.c_element,
+                signature.c_element,
             )
         }
     }
@@ -303,7 +303,7 @@ impl Scheme for AugSchemeMPL {
                     message.as_ptr() as *const _,
                     message.len(),
                 )
-            }.into(),
+            },
         }
     }
 
@@ -311,10 +311,10 @@ impl Scheme for AugSchemeMPL {
         unsafe {
             AugSchemeMPLVerify(
                 self.scheme,
-                *public_key.c_element,
+                public_key.c_element,
                 message.as_ptr() as *const _,
                 message.len(),
-                *signature.c_element,
+                signature.c_element,
             )
         }
     }
@@ -339,7 +339,7 @@ impl Scheme for AugSchemeMPL {
                 messages_pointers.as_mut_ptr() as *mut _,
                 messages_lengths.as_mut_ptr() as *mut _,
                 messages_pointers.len(),
-                *signature.c_element,
+                signature.c_element,
             )
         }
     }

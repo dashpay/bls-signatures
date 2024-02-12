@@ -6,8 +6,6 @@ use bls_dash_sys::{CoreMPLDeriveChildPkUnhardened, G1ElementFree, G1ElementFromB
 #[cfg(feature = "use_serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use std::sync::Arc;
-
 use crate::{schemes::Scheme, utils::c_err_to_result, BlsError, BasicSchemeMPL};
 
 // TODO Split into modules
@@ -22,14 +20,14 @@ pub type PublicKey = G1Element;
 pub type Signature = G2Element;
 
 pub struct G1Element {
-    pub(crate) c_element: Arc<*mut c_void>,
+    pub(crate) c_element: *mut c_void,
 }
 
 unsafe impl Send for G1Element {}
 
 impl PartialEq for G1Element {
     fn eq(&self, other: &Self) -> bool {
-        unsafe { G1ElementIsEqual(*self.c_element, *other.c_element) }
+        unsafe { G1ElementIsEqual(self.c_element, other.c_element) }
     }
 }
 
@@ -47,7 +45,7 @@ impl G1Element {
     pub fn generate() -> Self {
         let c_element = unsafe { G1ElementGenerator() };
 
-        G1Element { c_element: c_element.into() }
+        G1Element { c_element }
     }
 
     #[cfg(feature = "dash_helpers")]
@@ -76,7 +74,7 @@ impl G1Element {
         Ok(G1Element {
             c_element: c_err_to_result(|did_err| unsafe {
                 G1ElementFromBytes(bytes.as_ptr() as *const _, legacy, did_err)
-            })?.into(),
+            })?,
         })
     }
 
@@ -86,7 +84,7 @@ impl G1Element {
 
     pub(crate) fn to_bytes_with_legacy_flag(&self, legacy: bool) -> Box<[u8; G1_ELEMENT_SIZE]> {
         unsafe {
-            let malloc_ptr = G1ElementSerialize(*self.c_element, legacy);
+            let malloc_ptr = G1ElementSerialize(self.c_element, legacy);
             Box::from_raw(malloc_ptr as *mut _)
         }
     }
@@ -102,13 +100,13 @@ impl G1Element {
     ) -> G1Element {
         G1Element {
             c_element: unsafe {
-                CoreMPLDeriveChildPkUnhardened(scheme.as_mut_ptr(), *self.c_element, index)
-            }.into(),
+                CoreMPLDeriveChildPkUnhardened(scheme.as_mut_ptr(), self.c_element, index)
+            },
         }
     }
 
     pub(crate) fn fingerprint_with_legacy_flag(&self, legacy: bool) -> u32 {
-        unsafe { G1ElementGetFingerprint(*self.c_element, legacy) }
+        unsafe { G1ElementGetFingerprint(self.c_element, legacy) }
     }
 
     pub fn fingerprint(&self) -> u32 {
@@ -125,7 +123,7 @@ impl G1Element {
                 .map(|(hash, element)| {
                     (
                         hash.as_ptr() as *mut c_void,
-                        *element.c_element as *mut c_void,
+                        element.c_element as *mut c_void,
                     )
                 })
                 .unzip();
@@ -134,7 +132,7 @@ impl G1Element {
             Ok(G1Element {
                 c_element: c_err_to_result(|did_err| {
                     ThresholdPublicKeyRecover(c_elements_ptr, len, c_hashes_ptr, len, did_err)
-                })?.into(),
+                })?,
             })
         }
     }
@@ -143,7 +141,7 @@ impl G1Element {
 impl Clone for G1Element {
     fn clone(&self) -> Self {
         unsafe {
-            G1Element{c_element: G1ElementCopy(*self.c_element).into()}
+            G1Element{c_element: G1ElementCopy(self.c_element)}
         }
     }
 }
@@ -190,19 +188,19 @@ impl<'de> Deserialize<'de> for G1Element {
 
 impl Drop for G1Element {
     fn drop(&mut self) {
-        unsafe { G1ElementFree(*self.c_element) }
+        unsafe { G1ElementFree(self.c_element) }
     }
 }
 
 pub struct G2Element {
-    pub(crate) c_element: Arc<*mut c_void>,
+    pub(crate) c_element: *mut c_void,
 }
 
 unsafe impl Send for G2Element {}
 
 impl PartialEq for G2Element {
     fn eq(&self, other: &Self) -> bool {
-        unsafe { G2ElementIsEqual(*self.c_element, *other.c_element) }
+        unsafe { G2ElementIsEqual(self.c_element, other.c_element) }
     }
 }
 
@@ -233,7 +231,7 @@ impl G2Element {
         Ok(G2Element {
             c_element: c_err_to_result(|did_err| unsafe {
                 G2ElementFromBytes(bytes.as_ptr() as *const _, legacy, did_err)
-            })?.into(),
+            })?,
         })
     }
 
@@ -243,7 +241,7 @@ impl G2Element {
 
     pub(crate) fn to_bytes_with_legacy_flag(&self, legacy: bool) -> Box<[u8; G2_ELEMENT_SIZE]> {
         unsafe {
-            let malloc_ptr = G2ElementSerialize(*self.c_element, legacy);
+            let malloc_ptr = G2ElementSerialize(self.c_element, legacy);
             Box::from_raw(malloc_ptr as *mut _)
         }
     }
@@ -262,7 +260,7 @@ impl G2Element {
                 .map(|(hash, element)| {
                     (
                         hash.as_ptr() as *mut c_void,
-                        *element.c_element as *mut c_void,
+                        element.c_element as *mut c_void,
                     )
                 })
                 .unzip();
@@ -271,7 +269,7 @@ impl G2Element {
             Ok(G2Element {
                 c_element: c_err_to_result(|did_err| {
                     ThresholdSignatureRecover(c_elements_ptr, len, c_hashes_ptr, len, did_err)
-                })?.into(),
+                })?,
             })
         }
     }
@@ -280,7 +278,7 @@ impl G2Element {
 impl Clone for G2Element {
     fn clone(&self) -> Self {
         unsafe {
-            G2Element{c_element: G2ElementCopy(*self.c_element).into()}
+            G2Element{c_element: G2ElementCopy(self.c_element)}
         }
     }
 }
@@ -327,7 +325,7 @@ impl<'de> Deserialize<'de> for G2Element {
 
 impl Drop for G2Element {
     fn drop(&mut self) {
-        unsafe { G2ElementFree(*self.c_element) }
+        unsafe { G2ElementFree(self.c_element) }
     }
 }
 
