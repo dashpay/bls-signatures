@@ -199,8 +199,8 @@ pub struct G2Element {
 }
 
 // G2Element is immutable and thread safe
-unsafe impl Send for G1Element {}
-unsafe impl Sync for G1Element {}
+unsafe impl Send for G2Element {}
+unsafe impl Sync for G2Element {}
 
 impl PartialEq for G2Element {
     fn eq(&self, other: &Self) -> bool {
