@@ -23,7 +23,9 @@ pub struct G1Element {
     pub(crate) c_element: *mut c_void,
 }
 
+// G1Element is immutable and thread safe
 unsafe impl Send for G1Element {}
+unsafe impl Sync for G1Element {}
 
 impl PartialEq for G1Element {
     fn eq(&self, other: &Self) -> bool {
@@ -196,7 +198,9 @@ pub struct G2Element {
     pub(crate) c_element: *mut c_void,
 }
 
-unsafe impl Send for G2Element {}
+// G2Element is immutable and thread safe
+unsafe impl Send for G1Element {}
+unsafe impl Sync for G1Element {}
 
 impl PartialEq for G2Element {
     fn eq(&self, other: &Self) -> bool {
