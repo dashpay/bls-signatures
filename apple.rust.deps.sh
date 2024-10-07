@@ -66,8 +66,6 @@ prepare() {
         pushd contrib
         tar xfj "gmp-${GMP_VERSION}.tar.bz2"
         mv gmp-${GMP_VERSION} gmp
-        #rm gmp/compat.c && cp ../../contrib/gmp-patch-6.2.1/compat.c gmp/compat.c
-        #rm gmp/longlong.h && cp ../../contrib/gmp-patch-6.2.1/longlong.h gmp/longlong.h
         # shellcheck disable=SC2039,SC2164
         popd #contrib
         # shellcheck disable=SC2039,SC2164
