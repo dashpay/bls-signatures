@@ -394,40 +394,8 @@ G2Element G2Element::Negate() const
 GTElement G2Element::Pair(const G1Element& a) const { return a & (*this); }
 
 std::vector<uint8_t> G2Element::Serialize(const bool fLegacy) const {
-    uint8_t buffer[G2Element::SIZE + 1];
-    g2_write_bin(buffer, G2Element::SIZE + 1, (g2_st*)q, 1);
-
-    if (buffer[0] == 0x00) {  // infinity
-        std::vector<uint8_t> result(G2Element::SIZE, 0);
-        result[0] = 0xc0;
-        return result;
-    }
-
-    if (fLegacy) {
-        if (buffer[0] == 0x03) {  // sign bit set
-            buffer[1] |= 0x80;
-        }
-    } else {
-        // remove leading 3 bits
-        buffer[1] &= 0x1f;
-        buffer[49] &= 0x1f;
-        if (buffer[0] == 0x03) {
-            buffer[49] |= 0xa0;  // swapped later to 0
-        } else {
-            buffer[49] |= 0x80;
-        }
-    }
-
-    std::vector<uint8_t> result(G2Element::SIZE, 0);
-    if (fLegacy) {
-        std::memcpy(result.data(), buffer + 1, G2Element::SIZE);
-    } else {
-        // Swap buffer, relic uses the opposite ordering for Fq2 elements
-        std::memcpy(result.data(), buffer + 1 + G2Element::SIZE / 2, G2Element::SIZE / 2);
-        std::memcpy(result.data() + G2Element::SIZE / 2, buffer + 1, G2Element::SIZE / 2);
-    }
-
-    return result;
+  const auto arr = G2Element::SerializeToArray(fLegacy);
+  return std::vector<uint8_t>{arr.begin(), arr.end()};
 }
 
 std::array<uint8_t, G2Element::SIZE> G2Element::SerializeToArray(const bool fLegacy) const {
