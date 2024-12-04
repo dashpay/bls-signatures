@@ -171,16 +171,16 @@ uint32_t G1Element::GetFingerprint(const bool fLegacy) const
 }
 
 std::vector<uint8_t> G1Element::Serialize(const bool fLegacy) const {
-  const auto arr = G1Element::SerializeToArray(fLegacy);
-  return std::vector<uint8_t>{arr.begin(), arr.end()};
+    const auto arr = G1Element::SerializeToArray(fLegacy);
+    return std::vector<uint8_t>{arr.begin(), arr.end()};
 }
 
 std::array<uint8_t, G1Element::SIZE> G1Element::SerializeToArray(const bool fLegacy) const {
     uint8_t buffer[G1Element::SIZE + 1];
     g1_write_bin(buffer, G1Element::SIZE + 1, p, 1);
 
+    std::array<uint8_t, G1Element::SIZE> result{};
     if (buffer[0] == 0x00) {  // infinity
-        std::array<uint8_t, G1Element::SIZE> result{};
         result[0] = 0xc0;
         return result;
     }
@@ -193,7 +193,6 @@ std::array<uint8_t, G1Element::SIZE> G1Element::SerializeToArray(const bool fLeg
         buffer[1] |= 0x80;  // indicate compression
     }
 
-    std::array<uint8_t, G1Element::SIZE> result{};
     std::copy_n(buffer + 1, G1Element::SIZE, result.begin());
     return result;
 }
@@ -394,8 +393,8 @@ G2Element G2Element::Negate() const
 GTElement G2Element::Pair(const G1Element& a) const { return a & (*this); }
 
 std::vector<uint8_t> G2Element::Serialize(const bool fLegacy) const {
-  const auto arr = G2Element::SerializeToArray(fLegacy);
-  return std::vector<uint8_t>{arr.begin(), arr.end()};
+    const auto arr = G2Element::SerializeToArray(fLegacy);
+    return std::vector<uint8_t>{arr.begin(), arr.end()};
 }
 
 std::array<uint8_t, G2Element::SIZE> G2Element::SerializeToArray(const bool fLegacy) const {
