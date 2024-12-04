@@ -100,7 +100,7 @@ dnl warning about something unrelated, for example about some path issue. If tha
 dnl -Werror cannot be used because all of those warnings would be turned into errors.
 AX_CHECK_COMPILE_FLAG([-Werror], [FLAG_WERROR="-Werror"], [FLAG_WERROR=""])
 
-if [[[ "$use_debug" == "yes" || "$use_optimizations" == "no" ]]]; then
+if test x"$use_debug" = x"yes" -o x"$use_optimizations" = x"no"; then
   dnl Clear default -g -O2 flags
   if test x"$CFLAGS_overridden" = x"no"; then
     CFLAGS=""
@@ -112,7 +112,7 @@ if [[[ "$use_debug" == "yes" || "$use_optimizations" == "no" ]]]; then
   dnl Disable optimizations
   AX_CHECK_COMPILE_FLAG([-O0], [[DEBUG_FLAGS="$DEBUG_FLAGS -O0"]], [], [[$FLAG_WERROR]])
 
-  if [[[ "$use_debug" == "yes" ]]]; then
+  if test x"$use_debug" = x"yes"; then
     dnl Prefer -g3, fall back to -g if that is unavailable.
     AX_CHECK_COMPILE_FLAG(
       [-g3],
@@ -432,39 +432,55 @@ fi
 
 use_pkgconfig=yes
 
-if [[[ "$host_cpu" == x86_64 && "$use_optimizations" == "yes" ]]]; then
-  dnl Support for AMD64 (also known as x86_64 on some platforms) processors
-  CPU_ARCH="x64"
-  AC_DEFINE([ARCH], [X64], [Architecture.])
-  AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
-elif [[[ "$host_cpu" == aarch* && "$use_optimizations" == "yes" ]]]; then
-  dnl Support for 64-bit ARM processors
-  dnl Relic doesn't support aarch64 yet, set CPU_ARCH to none and ARCH to RELIC_NONE.
-  CPU_ARCH="none"
-  AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
-  AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
-elif [[[ "$host_cpu" == i?86 && "$use_optimizations" == "yes" ]]]; then
-  dnl Support for Intel x86 processors
-  CPU_ARCH="x86"
-  AC_DEFINE([ARCH], [X86], [Architecture.])
-  AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
-elif [[[ "$host_cpu" == arm* && "$use_optimizations" == "yes" ]]]; then
-  dnl Support for 32-bit native ARM processors
-  CPU_ARCH="arm"
-  AC_DEFINE([ARCH], [ARM], [Architecture.])
-  AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
-elif [[[ "$host_cpu" == *64* ]]]; then
-  dnl Support for an undefined 64-bit architecture
-  CPU_ARCH="none"
-  AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
-  AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
-elif [[[ "$host_cpu" == *32* || "$host_cpu" == arm* || "$host_cpu" == i?86 ]]]; then
-  dnl Support for an undefined 32-bit architecture
-  CPU_ARCH="none"
-  AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
-  AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+if test x"$use_optimizations" = x"yes"; then
+  case $host_cpu in
+    x86_64)
+      dnl Support for AMD64 (also known as x86_64 on some platforms) processors
+      CPU_ARCH="x64"
+      AC_DEFINE([ARCH], [X64], [Architecture.])
+      AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
+      ;;
+    aarch*)
+      dnl Relic doesn't support aarch64 yet, set CPU_ARCH to none and ARCH to RELIC_NONE.
+      dnl Support for 64-bit ARM processors
+      CPU_ARCH="none"
+      AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
+      AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
+      ;;
+    i?86)
+      dnl Support for Intel x86 processors
+      CPU_ARCH="x86"
+      AC_DEFINE([ARCH], [X86], [Architecture.])
+      AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+      ;;
+    arm*)
+      dnl Support for 32-bit native ARM processors
+      CPU_ARCH="arm"
+      AC_DEFINE([ARCH], [ARM], [Architecture.])
+      AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+      ;;
+    *)
+      AC_MSG_ERROR([Unable to determine host architecture, may not be supported!])
+      ;;
+  esac
 else
-  AC_MSG_ERROR([Unable to determine host architecture, may not be supported!])
+  case $host_cpu in
+    *32*|arm*|i?86)
+      dnl Support for an undefined 32-bit architecture
+      CPU_ARCH="none"
+      AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
+      AC_DEFINE([WSIZE], [32], [Size of word in this architecture.])
+      ;;
+    *64*)
+      dnl Support for an undefined 64-bit architecture
+      CPU_ARCH="none"
+      AC_DEFINE([ARCH], [RELIC_NONE], [Architecture.])
+      AC_DEFINE([WSIZE], [64], [Size of word in this architecture.])
+      ;;
+    *)
+      AC_MSG_ERROR([Unable to determine host architecture, may not be supported!])
+      ;;
+  esac
 fi
 
 case $host in
@@ -555,7 +571,7 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[char foo;]])],
       CFLAGS="$saved_CFLAGS"
     ])
 
-if [[[ "$CFLAGS_overridden" == "no" && "$CXXFLAGS_overridden" == "no" ]]]; then
+if test x"$CFLAGS_overridden" = x"no" -a x"$CXXFLAGS_overridden" = x"no"; then
   dnl Enable warnings
   AX_CHECK_COMPILE_FLAG([-Wall],[WARN_FLAGS="$WARN_FLAGS -Wall"], [], [[$FLAG_WERROR]])
   AX_CHECK_COMPILE_FLAG([-Wcast-align],[WARN_FLAGS="$WARN_FLAGS -Wcast-align"], [], [[$FLAG_WERROR]])
