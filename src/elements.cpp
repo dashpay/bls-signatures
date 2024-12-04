@@ -171,23 +171,8 @@ uint32_t G1Element::GetFingerprint(const bool fLegacy) const
 }
 
 std::vector<uint8_t> G1Element::Serialize(const bool fLegacy) const {
-    uint8_t buffer[G1Element::SIZE + 1];
-    g1_write_bin(buffer, G1Element::SIZE + 1, p, 1);
-
-    if (buffer[0] == 0x00) {  // infinity
-        std::vector<uint8_t> result(G1Element::SIZE, 0);
-        result[0] = 0xc0;
-        return result;
-    }
-
-    if (buffer[0] == 0x03) {  // sign bit set
-        buffer[1] |= fLegacy ? 0x80 : 0x20;
-    }
-
-    if (!fLegacy) {
-        buffer[1] |= 0x80;  // indicate compression
-    }
-    return std::vector<uint8_t>(buffer + 1, buffer + 1 + G1Element::SIZE);
+  const auto arr = G1Element::SerializeToArray(fLegacy);
+  return std::vector<uint8_t>{arr.begin(), arr.end()};
 }
 
 std::array<uint8_t, G1Element::SIZE> G1Element::SerializeToArray(const bool fLegacy) const {
