@@ -387,7 +387,7 @@ fn main() {
         "aarch64-apple-darwin" => ("arm64", "macosx"),
         _ => panic!("Target {} not supported", target.as_str())
     };
-    env::set_var("IPHONEOS_DEPLOYMENT_TARGET", "13.0");
+    env::set_var("IPHONEOS_DEPLOYMENT_TARGET", "15.0");
 
     // Collect include paths
     let include_paths_file_path = bls_dash_build_path.join("include_paths.txt");

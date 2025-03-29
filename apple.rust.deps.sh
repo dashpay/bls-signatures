@@ -10,7 +10,7 @@ set -e
 # TODO: so we need to combine multiple targets
 TARGET=$1
 git submodule update --init
-MIN_IOS="13.0"
+MIN_IOS="15.0"
 MIN_WATCHOS="5.0"
 MIN_TVOS=$MIN_IOS
 MIN_MACOS="10.15"
