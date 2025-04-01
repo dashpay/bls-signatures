@@ -142,10 +142,17 @@ CC="$CLANG" CFLAGS="$CFLAGS" CPPFLAGS="$CFLAGS" LDFLAGS="$CFLAGS" \
 --host=${HOST} --prefix="${CURRENT_DIR}/gmplib-${PFX}" \
 --disable-shared --enable-static --disable-assembly -v
 EOF
-    
+
+    # Save and unset IPHONEOS_DEPLOYMENT_TARGET before running configure
+    OLD_DEPLOYMENT_TARGET=$IPHONEOS_DEPLOYMENT_TARGET
+    unset IPHONEOS_DEPLOYMENT_TARGET
+
     chmod a+x "$CONFIGURESCRIPT"
     sh "$CONFIGURESCRIPT"
     rm "$CONFIGURESCRIPT"
+
+    # Restore IPHONEOS_DEPLOYMENT_TARGET
+    export IPHONEOS_DEPLOYMENT_TARGET=$OLD_DEPLOYMENT_TARGET
 
     # shellcheck disable=SC2039
     mkdir -p "${CURRENT_DIR}/log"
