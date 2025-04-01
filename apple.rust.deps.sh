@@ -114,7 +114,8 @@ build_gmp_arch() {
     ARCH=$2
     PFX=${PLATFORM}-${ARCH}
     # why this works with this host only?
-    HOST=aarch64-apple-darwin
+#    HOST=aarch64-apple-darwin
+    HOST=arm-apple-darwin
     # shellcheck disable=SC2039,SC2164
     pushd ${BUILD}
     SDK=$(xcrun --sdk "$PLATFORM" --show-sdk-path)
@@ -140,7 +141,7 @@ build_gmp_arch() {
 ./configure \
 CC="$CLANG" CFLAGS="$CFLAGS" CPPFLAGS="$CFLAGS" LDFLAGS="$CFLAGS" \
 --host=${HOST} --prefix="${CURRENT_DIR}/gmplib-${PFX}" \
---disable-shared --enable-static --disable-assembly -v
+--disable-shared --enable-static --disable-assembly --with-pic -v
 EOF
 
     # Save and unset IPHONEOS_DEPLOYMENT_TARGET before running configure
@@ -151,15 +152,14 @@ EOF
     sh "$CONFIGURESCRIPT"
     rm "$CONFIGURESCRIPT"
 
-    # Restore IPHONEOS_DEPLOYMENT_TARGET
-    export IPHONEOS_DEPLOYMENT_TARGET=$OLD_DEPLOYMENT_TARGET
-
     # shellcheck disable=SC2039
     mkdir -p "${CURRENT_DIR}/log"
     # shellcheck disable=SC2039
     make -j "$LOGICALCPU_MAX" &> "${CURRENT_DIR}"/log/gmplib-"${PFX}"-build.log
     # shellcheck disable=SC2039
     make install &> "${CURRENT_DIR}"/log/gmplib-"${PFX}"-install.log
+    # Restore IPHONEOS_DEPLOYMENT_TARGET
+    export IPHONEOS_DEPLOYMENT_TARGET=$OLD_DEPLOYMENT_TARGET
     #make check
     #exit 1
     # shellcheck disable=SC2039,SC2164
@@ -336,7 +336,8 @@ build_bls_arch() {
 build_all_arch() {
     PLATFORM=$1
     ARCH=$2
-    build_gmp_arch "$PLATFORM" "$ARCH"
+    BUILD_IN=$3
+    build_gmp_arch "$PLATFORM" "$ARCH" "$BUILD_IN"
     build_relic_arch "$PLATFORM" "$ARCH"
     build_bls_arch "$PLATFORM" "$ARCH"
 }
@@ -363,7 +364,7 @@ build_target() {
       ARCH=arm64
       PLATFORM=$MACOS
     fi
-    build_all_arch "$PLATFORM" "$ARCH"
+    build_all_arch "$PLATFORM" "$ARCH" "$BUILD_IN"
     PFX="${PLATFORM}"-"${ARCH}"
     rm -rf "build/artefacts/${BUILD_IN}"
     mkdir -p "build/artefacts/${BUILD_IN}"
