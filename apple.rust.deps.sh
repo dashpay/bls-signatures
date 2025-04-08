@@ -258,31 +258,38 @@ build_relic_arch() {
 
     COMPILER_ARGS="$(version_min_flag "$PLATFORM") -Wno-unused-functions"
 
-    EXTRA_ARGS="-DOPSYS=NONE -DPLATFORM=$IOS_PLATFORM -DDEPLOYMENT_TARGET=$DEPLOYMENT_TARGET -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
+    # shellcheck disable=SC3030
+    COMMON_EXTRA_ARGS=(
+      -DOPSYS=NONE
+      -DPLATFORM="$IOS_PLATFORM"
+      -DDEPLOYMENT_TARGET="$DEPLOYMENT_TARGET"
+      -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
+    )
 
-    # shellcheck disable=SC2039,SC3010,SC3024
+    # shellcheck disable=SC2039,SC3010,SC3024,SC3030
     if [[ $ARCH = "i386" ]]; then
-        EXTRA_ARGS+=" -DARCH=X86"
+        EXTRA_ARGS=(-DARCH=X86)
     elif [[ $ARCH = "x86_64" ]]; then
-        EXTRA_ARGS+=" -DARCH=X64"
+        EXTRA_ARGS=(-DARCH=X64)
     elif [[ $ARCH = "arm64" ]]; then
        # Relic doesn't support aarch64 yet, "ARCH=ARM" is for ARM 32-bit architecture only
-       EXTRA_ARGS+=" -DIOS_ARCH=arm64 -DARCH="
+        EXTRA_ARGS=(-DIOS_ARCH=arm64 -DARCH=)
     elif [[ $ARCH = "armv7s" ]]; then
-        EXTRA_ARGS+=" -DIOS_ARCH=armv7s -DARCH=ARM"
+        EXTRA_ARGS=(-DIOS_ARCH=armv7s -DARCH=ARM)
     elif [[ $ARCH = "armv7k" ]]; then
-        EXTRA_ARGS+=" -DIOS_ARCH=armv7k -DARCH=ARM"
+        EXTRA_ARGS=(-DIOS_ARCH=armv7k -DARCH=ARM)
     elif [[ $ARCH = "arm64_32" ]]; then
-        EXTRA_ARGS+=" -DIOS_ARCH=arm64_32 -DARCH=ARM"
+        EXTRA_ARGS=(-DIOS_ARCH=arm64_32 -DARCH=ARM)
     fi
 
     CURRENT_DIR=$(pwd)
+    # shellcheck disable=SC3054
     cmake -DCMAKE_PREFIX_PATH:PATH="${GMP_PFX}" -DTESTS=0 -DBENCH=0 -DBUILD_BLS_JS_BINDINGS=0 -DBUILD_BLS_PYTHON_BINDINGS=0 \
     -DBUILD_BLS_BENCHMARKS=0 -DBUILD_BLS_TESTS=0 -DCHECK=off -DARITH=gmp -DTIMER=HPROC -DFP_PRIME=381 -DMULTI=PTHREAD \
     -DFP_QNRES=on -DFP_METHD="INTEG;INTEG;INTEG;MONTY;EXGCD;SLIDE" -DFPX_METHD="INTEG;INTEG;LAZYR" -DPP_METHD="LAZYR;OATEP" \
     -DCOMP_FLAGS="-pipe -std=c99 -O3 -funroll-loops $OPTIMIZATIONFLAGS -isysroot $SDK -arch $ARCH -fembed-bitcode ${COMPILER_ARGS}" \
     -DWSIZE=$WSIZE -DVERBS=off -DSHLIB=off -DALLOC="AUTO" -DEP_PLAIN=off -DEP_SUPER=off -DPP_EXT="LAZYR" \
-    -DWITH="DV;BN;MD;FP;EP;FPX;EPX;PP;PC;CP" -DBN_METHD="COMBA;COMBA;MONTY;SLIDE;STEIN;BASIC" "${EXTRA_ARGS}" ../../
+    -DWITH="DV;BN;MD;FP;EP;FPX;EPX;PP;PC;CP" -DBN_METHD="COMBA;COMBA;MONTY;SLIDE;STEIN;BASIC" "${COMMON_EXTRA_ARGS[@]}" "${EXTRA_ARGS[@]}" ../../
 
     make -j "$LOGICALCPU_MAX"
     # shellcheck disable=SC2039,SC2164,SC3044
