@@ -126,6 +126,7 @@ build_gmp_arch() {
     mkdir gmplib-"${PLATFORM}"-"${ARCH}"
     CFLAGS="-Wno-unused-value -fembed-bitcode -arch ${ARCH} --sysroot=${SDK} $(version_min_flag "$PLATFORM")"
     CONFIGURESCRIPT="gmp_configure_script.sh"
+    mkdir -p "contrib"
     # shellcheck disable=SC2039,SC2164,SC3044
     pushd contrib
     # shellcheck disable=SC2039,SC2164,SC3044
