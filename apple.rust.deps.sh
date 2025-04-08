@@ -29,8 +29,7 @@ BUILD=build
 version_min_flag() {
     PLATFORM=$1
     FLAG=""
-    # shellcheck disable=SC2039
-    # shellcheck disable=SC2053
+    # shellcheck disable=SC2039,SC2053,SC3010
     if [[ $PLATFORM = $IPHONEOS ]]; then
         FLAG="-miphoneos-version-min=${MIN_IOS}"
     elif [[ $PLATFORM = $IPHONESIMULATOR ]]; then
@@ -55,20 +54,20 @@ prepare() {
         GMP_VERSION="6.3.0"
         CURRENT_DIR=$(pwd)
         echo "$CURRENT_DIR"
-        # shellcheck disable=SC2039,SC2164
+        # shellcheck disable=SC2039,SC2164,SC3044
         pushd ${BUILD}
         mkdir -p "contrib"
         if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
             curl -L -o "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
         fi
         rm -rf "contrib/gmp"
-        # shellcheck disable=SC2039,SC2164
+        # shellcheck disable=SC2039,SC2164,SC3044
         pushd contrib
         tar xfj "gmp-${GMP_VERSION}.tar.bz2"
         mv gmp-${GMP_VERSION} gmp
-        # shellcheck disable=SC2039,SC2164
+        # shellcheck disable=SC2039,SC2164,SC3044
         popd #contrib
-        # shellcheck disable=SC2039,SC2164
+        # shellcheck disable=SC2039,SC2164,SC3044
         popd #build
     }
 
@@ -89,16 +88,16 @@ prepare() {
         echo "$CURRENT_DIR"
         mkdir -p "${CURRENT_DIR}/${BUILD}/depends"
         if [ ! -s "${CURRENT_DIR}/${BUILD}/depends/relic" ]; then
-            # shellcheck disable=SC2039,SC2164
+            # shellcheck disable=SC2039,SC2164,SC3044
             pushd "${CURRENT_DIR}/${BUILD}/depends"
             git clone --depth 1 --branch "feat/ios-support" https://github.com/pankcuf/relic
-            # shellcheck disable=SC2039,SC2164
+            # shellcheck disable=SC2039,SC2164,SC3044
             pushd relic
             git fetch --depth 1 origin 19fb6d79a77ade4ae8cd70d2b0ef7aab8720d1ae
             git checkout 19fb6d79a77ade4ae8cd70d2b0ef7aab8720d1ae
-            # shellcheck disable=SC2039,SC2164
+            # shellcheck disable=SC2039,SC2164,SC3044
             popd #relic
-            # shellcheck disable=SC2039,SC2164
+            # shellcheck disable=SC2039,SC2164,SC3044
             popd #depends
         fi
     }
@@ -116,7 +115,7 @@ build_gmp_arch() {
     # why this works with this host only?
 #    HOST=aarch64-apple-darwin
     HOST=arm-apple-darwin
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     pushd ${BUILD}
     SDK=$(xcrun --sdk "$PLATFORM" --show-sdk-path)
     PLATFORM_PATH=$(xcrun --sdk "$PLATFORM" --show-sdk-platform-path)
@@ -127,9 +126,9 @@ build_gmp_arch() {
     mkdir gmplib-"${PLATFORM}"-"${ARCH}"
     CFLAGS="-Wno-unused-value -fembed-bitcode -arch ${ARCH} --sysroot=${SDK} $(version_min_flag "$PLATFORM")"
     CONFIGURESCRIPT="gmp_configure_script.sh"
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     pushd contrib
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     pushd gmp
     make clean || true
     make distclean || true
@@ -154,19 +153,19 @@ EOF
 
     # shellcheck disable=SC2039
     mkdir -p "${CURRENT_DIR}/log"
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3020
     make -j "$LOGICALCPU_MAX" &> "${CURRENT_DIR}"/log/gmplib-"${PFX}"-build.log
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3020
     make install &> "${CURRENT_DIR}"/log/gmplib-"${PFX}"-install.log
     # Restore IPHONEOS_DEPLOYMENT_TARGET
-    export IPHONEOS_DEPLOYMENT_TARGET=$OLD_DEPLOYMENT_TARGET
+    export IPHONEOS_DEPLOYMENT_TARGET="$OLD_DEPLOYMENT_TARGET"
     #make check
     #exit 1
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     popd # gmp
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     popd # contrib
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     popd # build
 }
 
@@ -175,7 +174,7 @@ build_relic_arch() {
     ARCH=$2
     PFX=${PLATFORM}-${ARCH}
 
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     pushd ${BUILD}
 
     SDK=$(xcrun --sdk "$PLATFORM" --show-sdk-path)
@@ -185,11 +184,11 @@ build_relic_arch() {
     GMP_PFX=$(pwd)/gmplib-${PFX}
     rm -rf "$BUILDDIR"
     mkdir "$BUILDDIR"
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     pushd "$BUILDDIR"
 
     unset CC
-    # shellcheck disable=SC2155
+    # shellcheck disable=SC2046,SC2155
     export CC=$(xcrun --sdk "${PLATFORM}" --find clang)
 
     WSIZE=0
@@ -197,8 +196,7 @@ build_relic_arch() {
     OPTIMIZATIONFLAGS=""
     DEPLOYMENT_TARGET=""
 
-    # shellcheck disable=SC2039
-    # shellcheck disable=SC2053
+    # shellcheck disable=SC2039,SC2053,SC3010
     if [[ $PLATFORM = $IPHONEOS ]]; then
         if [[ $ARCH = "arm64" ]] || [[ $ARCH = "arm64e" ]]; then
             IOS_PLATFORM=OS64
@@ -261,7 +259,7 @@ build_relic_arch() {
 
     EXTRA_ARGS="-DOPSYS=NONE -DPLATFORM=$IOS_PLATFORM -DDEPLOYMENT_TARGET=$DEPLOYMENT_TARGET -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
 
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3010,SC3024
     if [[ $ARCH = "i386" ]]; then
         EXTRA_ARGS+=" -DARCH=X86"
     elif [[ $ARCH = "x86_64" ]]; then
@@ -283,19 +281,19 @@ build_relic_arch() {
     -DFP_QNRES=on -DFP_METHD="INTEG;INTEG;INTEG;MONTY;EXGCD;SLIDE" -DFPX_METHD="INTEG;INTEG;LAZYR" -DPP_METHD="LAZYR;OATEP" \
     -DCOMP_FLAGS="-pipe -std=c99 -O3 -funroll-loops $OPTIMIZATIONFLAGS -isysroot $SDK -arch $ARCH -fembed-bitcode ${COMPILER_ARGS}" \
     -DWSIZE=$WSIZE -DVERBS=off -DSHLIB=off -DALLOC="AUTO" -DEP_PLAIN=off -DEP_SUPER=off -DPP_EXT="LAZYR" \
-    -DWITH="DV;BN;MD;FP;EP;FPX;EPX;PP;PC;CP" -DBN_METHD="COMBA;COMBA;MONTY;SLIDE;STEIN;BASIC" ${EXTRA_ARGS} ../../
+    -DWITH="DV;BN;MD;FP;EP;FPX;EPX;PP;PC;CP" -DBN_METHD="COMBA;COMBA;MONTY;SLIDE;STEIN;BASIC" "${EXTRA_ARGS}" ../../
 
     make -j "$LOGICALCPU_MAX"
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     popd # "$BUILDDIR"
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     popd # depends/relic
 }
 
 build_bls_arch() {
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3030
     BLS_FILES=( "bls" "chaincode" "elements" "extendedprivatekey" "extendedpublickey" "legacy" "privatekey" "schemes" "threshold" )
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3054
     ALL_BLS_OBJ_FILES=$(printf "%s.o " "${BLS_FILES[@]}")
 
     PLATFORM=$1
@@ -306,14 +304,14 @@ build_bls_arch() {
     BUILDDIR=${BUILD}/bls-"${PFX}"
     rm -rf "$BUILDDIR"
     mkdir "$BUILDDIR"
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     pushd "$BUILDDIR"
 
     EXTRA_ARGS="$(version_min_flag "$PLATFORM")"
 
     CURRENT_DIR=$(pwd)
 
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3054
     for F in "${BLS_FILES[@]}"
     do
         clang -I"../contrib/relic/include" \
@@ -329,7 +327,7 @@ build_bls_arch() {
     # shellcheck disable=SC2086
     xcrun -sdk "$PLATFORM" ar -cvq libbls.a $ALL_BLS_OBJ_FILES
 
-    # shellcheck disable=SC2039,SC2164
+    # shellcheck disable=SC2039,SC2164,SC3044
     popd # "$BUILDDIR"
 }
 
@@ -347,7 +345,7 @@ build_target() {
     echo "Build target: $BUILD_IN"
     ARCH=""
     PLATFORM=""
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3010
     if [[ $BUILD_IN = "x86_64-apple-ios" ]]; then
       ARCH=x86_64
       PLATFORM=$IPHONESIMULATOR
@@ -370,12 +368,7 @@ build_target() {
     mkdir -p "build/artefacts/${BUILD_IN}"
     cp "build/gmplib-${PFX}/lib/libgmp.a" "build/artefacts/${BUILD_IN}"
     cp "build/relic-${PFX}/depends/relic/lib/librelic_s.a" "build/artefacts/${BUILD_IN}"
-#    cp "build/relic-${PFX}/depends/sodium/libsodium.a" "build/artefacts/${BUILD_IN}"
     cp "build/bls-${PFX}/libbls.a" "build/artefacts/${BUILD_IN}"
-#    cp -rf build/bls-"${PFX}"/*.o build/artefacts/"${BUILD_IN}"/include
-#    cp -rf src/*.hpp build/artefacts/"${BUILD_IN}"/include
-#    cp -rf build/gmplib-"${PFX}"/include/gmp.h build/artefacts/"${BUILD_IN}"/include
-#    cp -rf build/relic-"${PFX}"/_deps/relic-build/include/*.h build/artefacts/"${BUILD_IN}"/include
 }
 
 prepare
