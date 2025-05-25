@@ -58,7 +58,7 @@ prepare() {
         pushd ${BUILD}
         mkdir -p "contrib"
         if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
-            curl -L -o --retry-all-errors "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
+            curl -L --retry-all-errors -o "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
         fi
         rm -rf "contrib/gmp"
         # shellcheck disable=SC2039,SC2164,SC3044
