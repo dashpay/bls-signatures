@@ -54,12 +54,16 @@ prepare() {
         GMP_VERSION="6.3.0"
         CURRENT_DIR=$(pwd)
         echo "$CURRENT_DIR"
+        mkdir -p "${BUILD}/contrib"
+        if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
+          cp "depends/gmp-${GMP_VERSION}.tar.bz2" "contrib/gmp-${GMP_VERSION}.tar.bz2"
+        fi
         # shellcheck disable=SC2039,SC2164,SC3044
         pushd ${BUILD}
-        mkdir -p "contrib"
-        if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
-            curl -L --retry-all-errors -o "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
-        fi
+#        mkdir -p "contrib"
+#        if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
+#            curl -L --retry-all-errors -o "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
+#        fi
         rm -rf "contrib/gmp"
         # shellcheck disable=SC2039,SC2164,SC3044
         pushd contrib
