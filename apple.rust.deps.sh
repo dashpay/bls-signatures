@@ -55,8 +55,8 @@ prepare() {
         CURRENT_DIR=$(pwd)
         echo "$CURRENT_DIR"
         mkdir -p "${BUILD}/contrib"
-        if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
-          cp "depends/gmp/gmp-${GMP_VERSION}.tar.bz2" "contrib/gmp-${GMP_VERSION}.tar.bz2"
+        if [ ! -s "${BUILD}/contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
+          cp "depends/gmp/gmp-${GMP_VERSION}.tar.bz2" "${BUILD}/contrib/gmp-${GMP_VERSION}.tar.bz2"
         fi
         # shellcheck disable=SC2039,SC2164,SC3044
         pushd ${BUILD}
