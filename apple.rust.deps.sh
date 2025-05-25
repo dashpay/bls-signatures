@@ -58,7 +58,7 @@ prepare() {
         pushd ${BUILD}
         mkdir -p "contrib"
         if [ ! -s "contrib/gmp-${GMP_VERSION}.tar.bz2" ]; then
-            curl -L -o "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
+            curl -L -o --retry-all-errors "contrib/gmp-${GMP_VERSION}.tar.bz2" https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2
         fi
         rm -rf "contrib/gmp"
         # shellcheck disable=SC2039,SC2164,SC3044
@@ -315,11 +315,12 @@ build_bls_arch() {
     # shellcheck disable=SC2039,SC2164,SC3044
     pushd "$BUILDDIR"
 
+    # shellcheck disable=SC2178
     EXTRA_ARGS="$(version_min_flag "$PLATFORM")"
 
     CURRENT_DIR=$(pwd)
 
-    # shellcheck disable=SC2039,SC3054
+    # shellcheck disable=SC2039,SC2128,SC3054
     for F in "${BLS_FILES[@]}"
     do
         clang -I"../contrib/relic/include" \
