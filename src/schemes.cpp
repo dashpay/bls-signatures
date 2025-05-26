@@ -26,7 +26,8 @@ using std::vector;
 
 namespace bls {
 
-static void HashPubKeys(std::vector<bn_t>& computedTs, const std::vector<std::array<uint8_t, G1Element::SIZE>>& vecPubKeyBytes)
+template<class T>
+static void HashPubKeys(std::vector<bn_t>& computedTs, const std::vector<std::pair<std::array<uint8_t, G1Element::SIZE>, const T*>>& vecPubKeyBytes)
 {
     bn_t order;
     bn_new(order);
@@ -35,7 +36,7 @@ static void HashPubKeys(std::vector<bn_t>& computedTs, const std::vector<std::ar
     std::vector<uint8_t> vecBuffer(vecPubKeyBytes.size() * G1Element::SIZE);
 
     for (size_t i = 0; i < vecPubKeyBytes.size(); i++) {
-        memcpy(vecBuffer.data() + i * G1Element::SIZE, vecPubKeyBytes[i].begin(), G1Element::SIZE);
+        memcpy(vecBuffer.data() + i * G1Element::SIZE, vecPubKeyBytes[i].first.begin(), G1Element::SIZE);
     }
 
     uint8_t pkHash[32];
@@ -204,13 +205,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         return std::memcmp(a.first.data(), b.first.data(), G1Element::SIZE) < 0;
     });
 
-    std::vector<std::array<uint8_t, G1Element::SIZE>> vecPublicKeyBytes;
-    vecPublicKeyBytes.reserve(vecPublicKeys.size());
-    for (const auto& it : vecSorted) {
-        vecPublicKeyBytes.push_back(it.first);
-    }
-
-    HashPubKeys(computedTs, vecPublicKeyBytes);
+    HashPubKeys(computedTs, vecSorted);
 
     // Raise all signatures to power of the corresponding t's and aggregate the results into aggSig
     // Also accumulates aggregation info for each signature
@@ -237,21 +232,20 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const Bytes& message,
                            const bool fLegacy) {
     std::vector<bn_t> computedTs(vecPublicKeys.size());
-    std::vector<std::array<uint8_t, G1Element::SIZE>> vecSorted;
+    std::vector<std::pair<std::array<uint8_t, G1Element::SIZE>, const G1Element*>> vecSorted;
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         bn_new(computedTs[i]);
-        vecSorted.emplace_back(vecPublicKeys[i].SerializeToArray(fLegacy));
+        vecSorted.emplace_back(vecPublicKeys[i].SerializeToArray(fLegacy), &vecPublicKeys[i]);
     }
     std::sort(vecSorted.begin(), vecSorted.end(), [](const auto& a, const auto& b) -> bool {
-        return std::memcmp(a.data(), b.data(), G1Element::SIZE) < 0;
+        return std::memcmp(a.first.data(), b.first.data(), G1Element::SIZE) < 0;
     });
 
-    HashPubKeys(computedTs, {vecSorted.begin(), vecSorted.end()});
+    HashPubKeys(computedTs, vecSorted);
 
     G1Element publicKey;
     for (size_t i = 0; i < vecSorted.size(); ++i) {
-        G1Element g1 = G1Element::FromBytes(Bytes(vecSorted[i]), fLegacy);
-        publicKey = CoreMPL::Aggregate({publicKey, g1 * computedTs[i]});
+        publicKey = CoreMPL::Aggregate({publicKey, (*vecSorted[i].second) * computedTs[i]});
         bn_free(computedTs[i]);
     }
 
