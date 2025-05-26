@@ -26,7 +26,7 @@ using std::vector;
 
 namespace bls {
 
-static void HashPubKeys(bn_t* computedTs, std::vector<Bytes> vecPubKeyBytes)
+static void HashPubKeys(std::vector<bn_t>& computedTs, std::vector<Bytes> vecPubKeyBytes)
 {
     bn_t order;
     bn_new(order);
@@ -194,7 +194,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         throw std::invalid_argument("LegacySchemeMPL::AggregateSigs sigs.size() != pubKeys.size()");
     }
 
-    bn_t* computedTs = new bn_t[vecPublicKeys.size()];
+    std::vector<bn_t> computedTs(vecPublicKeys.size());
     std::vector<std::pair<vector<uint8_t>, const G2Element*>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         bn_new(computedTs[i]);
@@ -218,11 +218,10 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
     expSigs.reserve(vecSorted.size());
     for (size_t i = 0; i < vecSorted.size(); i++) {
         expSigs.emplace_back(*vecSorted[i].second * computedTs[i]);
+        bn_free(computedTs[i]);
     }
 
     G2Element aggSig = CoreMPL::Aggregate(expSigs);
-
-    delete[] computedTs;
 
     return aggSig;
 }
@@ -237,12 +236,7 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const G2Element& signature,
                            const Bytes& message,
                            const bool fLegacy) {
-    bn_t one;
-    bn_new(one);
-    bn_zero(one);
-    bn_set_dig(one, 1);
-
-    bn_t* computedTs = new bn_t[vecPublicKeys.size()];
+    std::vector<bn_t> computedTs(vecPublicKeys.size());
     std::vector<vector<uint8_t>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         bn_new(computedTs[i]);
@@ -258,10 +252,8 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
     for (size_t i = 0; i < vecSorted.size(); ++i) {
         G1Element g1 = G1Element::FromBytes(Bytes(vecSorted[i]), fLegacy);
         publicKey = CoreMPL::Aggregate({publicKey, g1 * computedTs[i]});
+        bn_free(computedTs[i]);
     }
-
-    bn_free(one);
-    delete[] computedTs;
 
     return AggregateVerify({publicKey}, {message}, {signature});
 }
