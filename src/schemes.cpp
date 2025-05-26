@@ -26,7 +26,7 @@ using std::vector;
 
 namespace bls {
 
-static void HashPubKeys(std::vector<bn_t>& computedTs, std::vector<Bytes> vecPubKeyBytes)
+static void HashPubKeys(std::vector<bn_t>& computedTs, const std::vector<std::array<uint8_t, G1Element::SIZE>>& vecPubKeyBytes)
 {
     bn_t order;
     bn_new(order);
@@ -195,19 +195,19 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
     }
 
     std::vector<bn_t> computedTs(vecPublicKeys.size());
-    std::vector<std::pair<vector<uint8_t>, const G2Element*>> vecSorted(vecPublicKeys.size());
+    std::vector<std::pair<std::array<uint8_t, G1Element::SIZE>, const G2Element*>> vecSorted;
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         bn_new(computedTs[i]);
-        vecSorted[i] = std::make_pair(vecPublicKeys[i].Serialize(fLegacy), &vecSignatures[i]);
+        vecSorted.emplace_back(vecPublicKeys[i].SerializeToArray(fLegacy), &vecSignatures[i]);
     }
     std::sort(vecSorted.begin(), vecSorted.end(), [](const auto& a, const auto& b) {
         return std::memcmp(a.first.data(), b.first.data(), G1Element::SIZE) < 0;
     });
 
-    std::vector<Bytes> vecPublicKeyBytes;
+    std::vector<std::array<uint8_t, G1Element::SIZE>> vecPublicKeyBytes;
     vecPublicKeyBytes.reserve(vecPublicKeys.size());
     for (const auto& it : vecSorted) {
-        vecPublicKeyBytes.push_back(Bytes{it.first});
+        vecPublicKeyBytes.push_back(it.first);
     }
 
     HashPubKeys(computedTs, vecPublicKeyBytes);
@@ -237,10 +237,10 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const Bytes& message,
                            const bool fLegacy) {
     std::vector<bn_t> computedTs(vecPublicKeys.size());
-    std::vector<vector<uint8_t>> vecSorted(vecPublicKeys.size());
+    std::vector<std::array<uint8_t, G1Element::SIZE>> vecSorted;
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         bn_new(computedTs[i]);
-        vecSorted[i] = vecPublicKeys[i].Serialize(fLegacy);
+        vecSorted.emplace_back(vecPublicKeys[i].SerializeToArray(fLegacy));
     }
     std::sort(vecSorted.begin(), vecSorted.end(), [](const auto& a, const auto& b) -> bool {
         return std::memcmp(a.data(), b.data(), G1Element::SIZE) < 0;
