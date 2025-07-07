@@ -47,9 +47,14 @@ int main() {
     for (uint8_t i = 1; i <= 3; i++) {
         vector<uint8_t> seed(32, i);
         cout << "// Seed " << (int)i << ": [" << (int)i << ", " << (int)i << ", ...] (32 bytes)" << endl;
-        PrivateKey sk = BasicSchemeMPL().KeyGen(seed);
-        sks.push_back(sk);
-        pks.push_back(sk.GetG1Element());
+        try {
+            PrivateKey sk = BasicSchemeMPL().KeyGen(seed);
+            sks.push_back(sk);
+            pks.push_back(sk.GetG1Element());
+        } catch (const std::exception& e) {
+            cerr << "Error generating private key from seed " << (int)i << ": " << e.what() << endl;
+            return 1;
+        }
     }
     
     // Print public keys
