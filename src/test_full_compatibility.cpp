@@ -60,9 +60,15 @@ int main() {
     };
     
     // Create private keys from raw bytes
-    PrivateKey sk1 = PrivateKey::FromBytes(Bytes(sk1_bytes));
-    PrivateKey sk2 = PrivateKey::FromBytes(Bytes(sk2_bytes));
-    PrivateKey sk3 = PrivateKey::FromBytes(Bytes(sk3_bytes));
+    PrivateKey sk1, sk2, sk3;
+    try {
+        sk1 = PrivateKey::FromBytes(Bytes(sk1_bytes));
+        sk2 = PrivateKey::FromBytes(Bytes(sk2_bytes));
+        sk3 = PrivateKey::FromBytes(Bytes(sk3_bytes));
+    } catch (const std::exception& e) {
+        cerr << "Error creating private keys from bytes: " << e.what() << endl;
+        return 1;
+    }
     
     // Get public keys
     G1Element pk1 = sk1.GetG1Element();
