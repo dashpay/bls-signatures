@@ -30,9 +30,12 @@ fn create_test_vectors(count: usize) -> (Vec<SecretKey<Bls12381G1Impl>>, Vec<Pub
     let mut signatures = Vec::new();
     
     for i in 0..count {
-        let sk = SecretKey::<Bls12381G1Impl>::try_from(sk_bytes[i].as_slice()).unwrap();
-        let pk = PublicKey::<Bls12381G1Impl>::try_from(pk_bytes[i].as_slice()).unwrap();
-        let sig = Signature::<Bls12381G1Impl>::try_from(sig_bytes[i].as_slice()).unwrap();
+        let sk = SecretKey::<Bls12381G1Impl>::try_from(sk_bytes[i].as_slice())
+            .expect(&format!("Failed to create SecretKey from bytes for signer {}", i + 1));
+        let pk = PublicKey::<Bls12381G1Impl>::try_from(pk_bytes[i].as_slice())
+            .expect(&format!("Failed to create PublicKey from bytes for signer {}", i + 1));
+        let sig = Signature::<Bls12381G1Impl>::try_from(sig_bytes[i].as_slice())
+            .expect(&format!("Failed to create Signature from bytes for signer {}", i + 1));
         
         secret_keys.push(sk);
         public_keys.push(pk);
