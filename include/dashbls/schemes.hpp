@@ -186,6 +186,10 @@ public:
     bool AggregateVerify(const vector<G1Element>& pubkeys,
                          const vector<Bytes>& messages,
                          const G2Element& signature) override;
+
+    bool VerifySecure(const std::vector<G1Element>& vecPublicKeys,
+                      const G2Element& signature,
+                      const Bytes& message) override;
 };
 
 class PopSchemeMPL final : public CoreMPL {
