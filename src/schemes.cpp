@@ -233,11 +233,11 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const Bytes& message,
                            const bool fLegacy) {
     for (const auto& pk : vecPublicKeys) {
-        if (pk == G1Element()) {
+        if (!pk.IsValid() || pk == G1Element()) {
             return false;
         }
     }
-    if (signature == G2Element()) {
+    if (!signature.IsValid() || signature == G2Element()) {
         return false;
     }
 
@@ -575,11 +575,11 @@ bool AugSchemeMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
     // cause double-augmentation. Bypass by calling CoreMPL::AggregateVerify
     // directly after computing the combined public key.
     for (const auto& pk : vecPublicKeys) {
-        if (pk == G1Element()) {
+        if (!pk.IsValid() || pk == G1Element()) {
             return false;
         }
     }
-    if (signature == G2Element()) {
+    if (!signature.IsValid() || signature == G2Element()) {
         return false;
     }
 
