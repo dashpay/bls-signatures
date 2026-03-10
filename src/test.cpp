@@ -1651,6 +1651,24 @@ TEST_CASE("VerifySecure calls CoreMPL::AggregateVerify directly")
         REQUIRE(BasicSchemeMPL().VerifySecure(pks, aggSig, Bytes(msg)));
     }
 
+    SECTION("AugSchemeMPL VerifySecure round-trips correctly")
+    {
+        auto sk1 = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto sk2 = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto pk1 = sk1.GetG1Element();
+        auto pk2 = sk2.GetG1Element();
+        auto msg = getRandomSeed();
+
+        auto sig1 = AugSchemeMPL().Sign(sk1, msg);
+        auto sig2 = AugSchemeMPL().Sign(sk2, msg);
+
+        vector<G1Element> pks = {pk1, pk2};
+        vector<G2Element> sigs = {sig1, sig2};
+        auto aggSig = AugSchemeMPL().AggregateSecure(pks, sigs, Bytes(msg));
+
+        REQUIRE(AugSchemeMPL().VerifySecure(pks, aggSig, Bytes(msg)));
+    }
+
     SECTION("VerifySecure rejects identity pubkey")
     {
         auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());

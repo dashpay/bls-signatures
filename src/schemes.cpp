@@ -570,10 +570,10 @@ bool AugSchemeMPL::AggregateVerify(const vector<G1Element>& pubkeys,
 bool AugSchemeMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                                  const G2Element& signature,
                                  const Bytes& message) {
-    // AugSchemeMPL overrides AggregateVerify to prepend pubkeys to messages.
-    // CoreMPL::VerifySecure calls AggregateVerify virtually, which would
-    // cause double-augmentation. Bypass by calling CoreMPL::AggregateVerify
-    // directly after computing the combined public key.
+    // AugSchemeMPL::Sign hashes H(pk_i || msg) per signer.  We cannot
+    // combine into a single pubkey because each signer's hash is different.
+    // Instead, pass T-weighted individual pubkeys with their augmented
+    // messages to CoreMPL::AggregateVerify.
     for (const auto& pk : vecPublicKeys) {
         if (!pk.IsValid() || pk == G1Element()) {
             return false;
@@ -595,13 +595,17 @@ bool AugSchemeMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
     HashPubKeys(computedTs.data, vecSorted.size(),
                 [&](size_t i) { return vecSorted[i].data(); });
 
-    G1Element publicKey;
+    std::vector<G1Element> weightedPks(vecSorted.size());
+    std::vector<std::vector<uint8_t>> augMessages(vecSorted.size());
     for (size_t i = 0; i < vecSorted.size(); ++i) {
         G1Element g1 = G1Element::FromBytes(Bytes(vecSorted[i]), false);
-        publicKey += g1 * computedTs[i];
+        weightedPks[i] = g1 * computedTs[i];
+        augMessages[i].reserve(G1Element::SIZE + message.size());
+        augMessages[i].insert(augMessages[i].end(), vecSorted[i].begin(), vecSorted[i].end());
+        augMessages[i].insert(augMessages[i].end(), message.begin(), message.end());
     }
 
-    return CoreMPL::AggregateVerify({publicKey}, {message}, {signature});
+    return CoreMPL::AggregateVerify(weightedPks, augMessages, signature);
 }
 
 G2Element PopSchemeMPL::PopProve(const PrivateKey &seckey)
