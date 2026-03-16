@@ -1878,7 +1878,7 @@ TEST_CASE("PopSchemeMPL::PopVerify rejects identity elements")
     }
 }
 
-TEST_CASE("FastAggregateVerify rejects identity pubkeys in input list")
+TEST_CASE("FastAggregateVerify rejects identity elements")
 {
     SECTION("Identity pubkey in list is rejected")
     {
@@ -1897,6 +1897,32 @@ TEST_CASE("FastAggregateVerify rejects identity pubkeys in input list")
         auto sig = PopSchemeMPL().Sign(sk, msg);
         vector<G1Element> pks = {G1Element()};
         REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), sig) == false);
+    }
+
+    SECTION("Identity signature rejected")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        vector<G1Element> pks = {pk};
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), G2Element()) == false);
+    }
+
+    SECTION("Malformed non-identity signature rejected")
+    {
+        g2_t point_native;
+        g2_set_infty(point_native);
+        fp2_rand(point_native->x);
+        fp2_rand(point_native->y);
+        fp2_rand(point_native->z);
+        G2Element badSig = G2Element::FromNative(point_native);
+        REQUIRE(badSig.IsValid() == false);
+
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        vector<G1Element> pks = {pk};
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), badSig) == false);
     }
 }
 

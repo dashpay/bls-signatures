@@ -699,6 +699,9 @@ bool PopSchemeMPL::FastAggregateVerify(const vector<G1Element>& pubkeys,
     if (pubkeys.size() == 0) {
         return false;
     }
+    if (!signature.IsValid() || signature == G2Element()) {
+        return false;
+    }
     for (const auto& pk : pubkeys) {
         if (!pk.IsValid() || pk == G1Element()) {
             return false;
