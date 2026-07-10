@@ -36,6 +36,14 @@ ifneq ($(wildcard $(MIMALLOC_LIB_PATH)/libmimalloc-secure-debug.a),)
   MIMALLOC_LIB := mimalloc-secure-debug
 endif
 
+# blst is only built (and linked into libdashbls) on little-endian
+# x86_64/aarch64 hosts; link it only when the CMake build actually produced it.
+BLST_LIB_PATH := $(CURR_DIR)../build/depends/blst
+BLST_LDFLAGS :=
+ifneq ($(wildcard $(BLST_LIB_PATH)/libblst.a),)
+  BLST_LDFLAGS := -L$(BLST_LIB_PATH) -lblst
+endif
+
 CGO_CXXFLAGS ?= "\
 -I$(CURR_DIR)../build/depends/relic/include \
 -I$(CURR_DIR)../depends/mimalloc/include \
@@ -46,6 +54,7 @@ CGO_CXXFLAGS ?= "\
 CGO_LDFLAGS ?= "\
 -L$(CURR_DIR)../build/src -ldashbls \
 -L$(MIMALLOC_LIB_PATH) -l$(MIMALLOC_LIB) \
+$(BLST_LDFLAGS) \
 -L$(CURR_DIR)../build/depends/relic/lib -lrelic_s \
 -L$(GMP_PREFIX)/lib -lgmp"
 
