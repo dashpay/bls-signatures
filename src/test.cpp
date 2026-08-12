@@ -742,7 +742,28 @@ TEST_CASE("Signature tests")
         REQUIRE(PopSchemeMPL().FastAggregateVerify(pks_as_g1, msg, aggSig) == false);
         REQUIRE(pks_as_bytes.size() == 0);
         REQUIRE(PopSchemeMPL().FastAggregateVerify(pks_as_bytes, msg, aggSig.Serialize()) == false);
+    }
 
+    SECTION("Verification with identity pubkey or signature should fail")
+    {
+        // Single verify: identity pubkey must be rejected
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = BasicSchemeMPL().Sign(sk, msg);
+        REQUIRE(BasicSchemeMPL().Verify(G1Element(), msg, sig) == false);
+
+        // Single verify: identity signature must be rejected
+        auto pk = sk.GetG1Element();
+        REQUIRE(BasicSchemeMPL().Verify(pk, msg, G2Element()) == false);
+
+        // AggregateVerify: identity pubkey in non-empty list must be rejected
+        vector<G1Element> pks = {G1Element()};
+        vector<Bytes> msgs_b = {Bytes(msg)};
+        REQUIRE(BasicSchemeMPL().AggregateVerify(pks, msgs_b, sig) == false);
+
+        // AggregateVerify: identity signature with non-empty pubkeys must be rejected
+        pks = {pk};
+        REQUIRE(BasicSchemeMPL().AggregateVerify(pks, msgs_b, G2Element()) == false);
     }
 }
 
@@ -1568,6 +1589,340 @@ TEST_CASE("CheckValid")
         std::cout <<Util::HexStr(badSer) << std::endl;
 
         REQUIRE_THROWS(G2Element::FromByteVector(badSer));
+    }
+}
+
+TEST_CASE("LegacySchemeMPL Verify rejects invalid elements")
+{
+    SECTION("Verify rejects identity pubkey")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = LegacySchemeMPL().Sign(sk, Bytes(msg));
+        REQUIRE(LegacySchemeMPL().Verify(G1Element(), Bytes(msg), sig) == false);
+    }
+
+    SECTION("Verify rejects identity signature")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        REQUIRE(LegacySchemeMPL().Verify(pk, Bytes(msg), G2Element()) == false);
+    }
+
+    SECTION("AggregateVerify rejects identity pubkey in non-empty list")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = LegacySchemeMPL().Sign(sk, Bytes(msg));
+        vector<G1Element> pks = {G1Element()};
+        vector<Bytes> msgs = {Bytes(msg)};
+        REQUIRE(LegacySchemeMPL().AggregateVerify(pks, msgs, sig) == false);
+    }
+
+    SECTION("AggregateVerify rejects identity signature with non-empty pubkeys")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        vector<G1Element> pks = {pk};
+        vector<Bytes> msgs = {Bytes(msg)};
+        REQUIRE(LegacySchemeMPL().AggregateVerify(pks, msgs, G2Element()) == false);
+    }
+
+    SECTION("Verify rejects malformed non-identity pubkey")
+    {
+        string badPointHex =
+            "8d5d0fb73b9c92df4eab4216e48c3e358578b4cc30f82c268bd6fef3bd34b558628daf1afef798d4c3b0fcd8b28c8973";
+        G1Element badPk = G1Element::FromBytesUnchecked(Bytes(Util::HexToBytes(badPointHex)));
+        REQUIRE(badPk.IsValid() == false);
+
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = LegacySchemeMPL().Sign(sk, Bytes(msg));
+        REQUIRE(LegacySchemeMPL().Verify(badPk, Bytes(msg), sig) == false);
+    }
+
+    SECTION("Verify rejects malformed non-identity signature")
+    {
+        // Build an invalid G2 element via native random coordinates
+        g2_t point_native;
+        g2_set_infty(point_native);
+        fp2_rand(point_native->x);
+        fp2_rand(point_native->y);
+        fp2_rand(point_native->z);
+        G2Element badSig = G2Element::FromNative(point_native);
+        REQUIRE(badSig.IsValid() == false);
+
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        REQUIRE(LegacySchemeMPL().Verify(pk, Bytes(msg), badSig) == false);
+    }
+
+    SECTION("AggregateVerify rejects malformed non-identity pubkey")
+    {
+        string badPointHex =
+            "8d5d0fb73b9c92df4eab4216e48c3e358578b4cc30f82c268bd6fef3bd34b558628daf1afef798d4c3b0fcd8b28c8973";
+        G1Element badPk = G1Element::FromBytesUnchecked(Bytes(Util::HexToBytes(badPointHex)));
+
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = LegacySchemeMPL().Sign(sk, Bytes(msg));
+        vector<G1Element> pks = {badPk};
+        vector<Bytes> msgs = {Bytes(msg)};
+        REQUIRE(LegacySchemeMPL().AggregateVerify(pks, msgs, sig) == false);
+    }
+}
+
+TEST_CASE("VerifySecure calls CoreMPL::AggregateVerify directly")
+{
+    SECTION("BasicSchemeMPL VerifySecure round-trips correctly")
+    {
+        auto sk1 = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto sk2 = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto pk1 = sk1.GetG1Element();
+        auto pk2 = sk2.GetG1Element();
+        auto msg = getRandomSeed();
+
+        auto sig1 = BasicSchemeMPL().Sign(sk1, msg);
+        auto sig2 = BasicSchemeMPL().Sign(sk2, msg);
+
+        vector<G1Element> pks = {pk1, pk2};
+        vector<G2Element> sigs = {sig1, sig2};
+        auto aggSig = BasicSchemeMPL().AggregateSecure(pks, sigs, Bytes(msg));
+
+        REQUIRE(BasicSchemeMPL().VerifySecure(pks, aggSig, Bytes(msg)));
+    }
+
+    SECTION("AugSchemeMPL VerifySecure round-trips correctly")
+    {
+        auto sk1 = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto sk2 = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto pk1 = sk1.GetG1Element();
+        auto pk2 = sk2.GetG1Element();
+        auto msg = getRandomSeed();
+
+        auto sig1 = AugSchemeMPL().Sign(sk1, msg);
+        auto sig2 = AugSchemeMPL().Sign(sk2, msg);
+
+        vector<G1Element> pks = {pk1, pk2};
+        vector<G2Element> sigs = {sig1, sig2};
+        auto aggSig = AugSchemeMPL().AggregateSecure(pks, sigs, Bytes(msg));
+
+        REQUIRE(AugSchemeMPL().VerifySecure(pks, aggSig, Bytes(msg)));
+    }
+
+    SECTION("BasicSchemeMPL VerifySecure rejects identity pubkey")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = BasicSchemeMPL().Sign(sk, msg);
+
+        vector<G1Element> pks = {G1Element()};
+        REQUIRE(BasicSchemeMPL().VerifySecure(pks, sig, Bytes(msg)) == false);
+    }
+
+    SECTION("BasicSchemeMPL VerifySecure rejects identity signature")
+    {
+        auto sk1 = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto sk2 = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+
+        vector<G1Element> pks = {sk1.GetG1Element(), sk2.GetG1Element()};
+        REQUIRE(BasicSchemeMPL().VerifySecure(pks, G2Element(), Bytes(msg)) == false);
+    }
+
+    SECTION("AugSchemeMPL VerifySecure rejects identity pubkey")
+    {
+        auto sk = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = AugSchemeMPL().Sign(sk, msg);
+
+        vector<G1Element> pks = {G1Element()};
+        REQUIRE(AugSchemeMPL().VerifySecure(pks, sig, Bytes(msg)) == false);
+    }
+
+    SECTION("AugSchemeMPL VerifySecure rejects identity signature")
+    {
+        auto sk1 = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto sk2 = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+
+        vector<G1Element> pks = {sk1.GetG1Element(), sk2.GetG1Element()};
+        REQUIRE(AugSchemeMPL().VerifySecure(pks, G2Element(), Bytes(msg)) == false);
+    }
+}
+
+TEST_CASE("PopSchemeMPL::PopVerify bytes overload consistent error handling")
+{
+    SECTION("Malformed pubkey bytes returns false instead of throwing")
+    {
+        vector<uint8_t> badPk(G1Element::SIZE, 0xff);
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pop = PopSchemeMPL().PopProve(sk);
+        auto popBytes = pop.Serialize();
+        REQUIRE_NOTHROW(PopSchemeMPL().PopVerify(Bytes(badPk), Bytes(popBytes)));
+        REQUIRE(PopSchemeMPL().PopVerify(Bytes(badPk), Bytes(popBytes)) == false);
+    }
+
+    SECTION("Malformed proof bytes returns false instead of throwing")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto pkBytes = pk.Serialize();
+        vector<uint8_t> badProof(G2Element::SIZE, 0xff);
+        REQUIRE_NOTHROW(PopSchemeMPL().PopVerify(Bytes(pkBytes), Bytes(badProof)));
+        REQUIRE(PopSchemeMPL().PopVerify(Bytes(pkBytes), Bytes(badProof)) == false);
+    }
+
+    SECTION("Valid proof still verifies through bytes overload")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto pop = PopSchemeMPL().PopProve(sk);
+        auto pkBytes = pk.Serialize();
+        auto popBytes = pop.Serialize();
+        REQUIRE(PopSchemeMPL().PopVerify(Bytes(pkBytes), Bytes(popBytes)));
+    }
+}
+
+TEST_CASE("Bytes overloads return false on malformed input instead of throwing")
+{
+    SECTION("CoreMPL::Verify with malformed pubkey bytes")
+    {
+        vector<uint8_t> badPk(G1Element::SIZE, 0xff);
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = BasicSchemeMPL().Sign(sk, msg);
+        auto sigBytes = sig.Serialize();
+        REQUIRE_NOTHROW(BasicSchemeMPL().Verify(Bytes(badPk), Bytes(msg), Bytes(sigBytes)));
+        REQUIRE(BasicSchemeMPL().Verify(Bytes(badPk), Bytes(msg), Bytes(sigBytes)) == false);
+    }
+
+    SECTION("CoreMPL::Verify with malformed signature bytes")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto pkBytes = pk.Serialize();
+        auto msg = getRandomSeed();
+        vector<uint8_t> badSig(G2Element::SIZE, 0xff);
+        REQUIRE_NOTHROW(BasicSchemeMPL().Verify(Bytes(pkBytes), Bytes(msg), Bytes(badSig)));
+        REQUIRE(BasicSchemeMPL().Verify(Bytes(pkBytes), Bytes(msg), Bytes(badSig)) == false);
+    }
+
+    SECTION("CoreMPL::AggregateVerify with malformed pubkey bytes")
+    {
+        vector<uint8_t> badPk(G1Element::SIZE, 0xff);
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = BasicSchemeMPL().Sign(sk, msg);
+        auto sigBytes = sig.Serialize();
+        vector<Bytes> pks = {Bytes(badPk)};
+        vector<Bytes> msgs = {Bytes(msg)};
+        REQUIRE_NOTHROW(BasicSchemeMPL().AggregateVerify(pks, msgs, Bytes(sigBytes)));
+        REQUIRE(BasicSchemeMPL().AggregateVerify(pks, msgs, Bytes(sigBytes)) == false);
+    }
+
+    SECTION("CoreMPL::AggregateVerify with malformed signature bytes")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto pkBytes = pk.Serialize();
+        auto msg = getRandomSeed();
+        vector<uint8_t> badSig(G2Element::SIZE, 0xff);
+        vector<Bytes> pks = {Bytes(pkBytes)};
+        vector<Bytes> msgs = {Bytes(msg)};
+        REQUIRE_NOTHROW(BasicSchemeMPL().AggregateVerify(pks, msgs, Bytes(badSig)));
+        REQUIRE(BasicSchemeMPL().AggregateVerify(pks, msgs, Bytes(badSig)) == false);
+    }
+
+    SECTION("FastAggregateVerify with malformed pubkey bytes")
+    {
+        vector<uint8_t> badPk(G1Element::SIZE, 0xff);
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = PopSchemeMPL().Sign(sk, msg);
+        auto sigBytes = sig.Serialize();
+        vector<Bytes> pks = {Bytes(badPk)};
+        REQUIRE_NOTHROW(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), Bytes(sigBytes)));
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), Bytes(sigBytes)) == false);
+    }
+
+    SECTION("AugSchemeMPL::AggregateVerify with malformed signature bytes")
+    {
+        auto sk = AugSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto pkBytes = pk.Serialize();
+        auto msg = getRandomSeed();
+        vector<uint8_t> badSig(G2Element::SIZE, 0xff);
+        vector<Bytes> pks = {Bytes(pkBytes)};
+        vector<Bytes> msgs = {Bytes(msg)};
+        REQUIRE_NOTHROW(AugSchemeMPL().AggregateVerify(pks, msgs, Bytes(badSig)));
+        REQUIRE(AugSchemeMPL().AggregateVerify(pks, msgs, Bytes(badSig)) == false);
+    }
+}
+
+TEST_CASE("PopSchemeMPL::PopVerify rejects identity elements")
+{
+    SECTION("PopVerify rejects identity pubkey")
+    {
+        REQUIRE(PopSchemeMPL().PopVerify(G1Element(), G2Element()) == false);
+    }
+
+    SECTION("PopVerify rejects identity proof with valid pubkey")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        REQUIRE(PopSchemeMPL().PopVerify(pk, G2Element()) == false);
+    }
+}
+
+TEST_CASE("FastAggregateVerify rejects identity elements")
+{
+    SECTION("Identity pubkey in list is rejected")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        auto sig = PopSchemeMPL().Sign(sk, msg);
+        vector<G1Element> pks = {pk, G1Element()};
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), sig) == false);
+    }
+
+    SECTION("All identity pubkeys rejected")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto msg = getRandomSeed();
+        auto sig = PopSchemeMPL().Sign(sk, msg);
+        vector<G1Element> pks = {G1Element()};
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), sig) == false);
+    }
+
+    SECTION("Identity signature rejected")
+    {
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        vector<G1Element> pks = {pk};
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), G2Element()) == false);
+    }
+
+    SECTION("Malformed non-identity signature rejected")
+    {
+        g2_t point_native;
+        g2_set_infty(point_native);
+        fp2_rand(point_native->x);
+        fp2_rand(point_native->y);
+        fp2_rand(point_native->z);
+        G2Element badSig = G2Element::FromNative(point_native);
+        REQUIRE(badSig.IsValid() == false);
+
+        auto sk = PopSchemeMPL().KeyGen(getRandomSeed());
+        auto pk = sk.GetG1Element();
+        auto msg = getRandomSeed();
+        vector<G1Element> pks = {pk};
+        REQUIRE(PopSchemeMPL().FastAggregateVerify(pks, Bytes(msg), badSig) == false);
     }
 }
 
