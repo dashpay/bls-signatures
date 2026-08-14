@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #define CATCH_CONFIG_RUNNER
+#include <random>
 #include <thread>
 
 #include "bls.hpp"
@@ -1619,6 +1620,231 @@ TEST_CASE("CheckValid for Legacy")
         }
     }
 }
+
+namespace {
+
+// Deserializes with the accelerated (blst) path and with the pure relic path
+// and requires identical outcomes: both throw, or both succeed with equal
+// points, serializations and validity. Without blst support both runs use the
+// relic path and the comparison is trivial.
+template <typename Element>
+void RequireSameDeserialization(const std::vector<uint8_t>& serialized, const bool fLegacy)
+{
+    bool threwFast = false, threwSlow = false;
+    Element fast, slow;
+
+    SetDeserializationFastPathEnabled(true);
+    try {
+        fast = Element::FromBytes(Bytes(serialized), fLegacy);
+    } catch (const std::exception&) {
+        threwFast = true;
+    }
+    SetDeserializationFastPathEnabled(false);
+    try {
+        slow = Element::FromBytes(Bytes(serialized), fLegacy);
+    } catch (const std::exception&) {
+        threwSlow = true;
+    }
+    SetDeserializationFastPathEnabled(true);
+
+    REQUIRE(threwFast == threwSlow);
+    if (threwFast) {
+        return;
+    }
+    REQUIRE(fast == slow);
+    REQUIRE(fast.Serialize(fLegacy) == slow.Serialize(fLegacy));
+
+    // IsValid must agree as well (it has an accelerated path for affine
+    // points); compare it against the pure relic validity check.
+    const bool validFast = fast.IsValid();
+    SetDeserializationFastPathEnabled(false);
+    const bool validSlow = slow.IsValid();
+    SetDeserializationFastPathEnabled(true);
+    REQUIRE(validFast == validSlow);
+
+    // FromBytesUnchecked must produce the same point too
+    Element uncheckedFast = Element::FromBytesUnchecked(Bytes(serialized), fLegacy);
+    SetDeserializationFastPathEnabled(false);
+    Element uncheckedSlow = Element::FromBytesUnchecked(Bytes(serialized), fLegacy);
+    SetDeserializationFastPathEnabled(true);
+    REQUIRE(uncheckedFast == uncheckedSlow);
+}
+
+void RequireSameDeserializationBothSchemes(const std::vector<uint8_t>& serialized, const size_t size)
+{
+    if (size == G1Element::SIZE) {
+        RequireSameDeserialization<G1Element>(serialized, false);
+        RequireSameDeserialization<G1Element>(serialized, true);
+    } else {
+        RequireSameDeserialization<G2Element>(serialized, false);
+        RequireSameDeserialization<G2Element>(serialized, true);
+    }
+}
+
+} // namespace
+
+TEST_CASE("Accelerated deserialization differential")
+{
+    std::mt19937_64 rng(0x626c7374);  // "blst"
+
+    SECTION("valid points, both schemes") {
+        for (int i = 0; i < 24; i++) {
+            std::vector<uint8_t> seed(32);
+            for (auto& b : seed) b = (uint8_t)rng();
+            PrivateKey sk = BasicSchemeMPL().KeyGen(seed);
+            G1Element pk = sk.GetG1Element();
+            std::vector<uint8_t> msg(32);
+            for (auto& b : msg) b = (uint8_t)rng();
+            G2Element sig = BasicSchemeMPL().Sign(sk, msg);
+
+            RequireSameDeserializationBothSchemes(pk.Serialize(false), G1Element::SIZE);
+            RequireSameDeserializationBothSchemes(pk.Serialize(true), G1Element::SIZE);
+            RequireSameDeserializationBothSchemes(sig.Serialize(false), G2Element::SIZE);
+            RequireSameDeserializationBothSchemes(sig.Serialize(true), G2Element::SIZE);
+        }
+    }
+
+    SECTION("points on the curve but outside the subgroup") {
+        int found = 0;
+        while (found < 8) {
+            g1_t p;
+            fp_rand(p->x);
+            fp_zero(p->y);
+            fp_set_dig(p->z, 1);
+            p->coord = BASIC;
+            fp_t rhs;
+            ep_rhs(rhs, p);
+            if (!fp_srt(p->y, rhs)) continue;
+            if (g1_is_valid(p)) continue;
+            found++;
+            uint8_t buf[G1Element::SIZE + 1];
+            g1_write_bin(buf, G1Element::SIZE + 1, p, 1);
+            // relic compressed (0x02/0x03 prefix) -> new-format compressed
+            std::vector<uint8_t> b(buf + 1, buf + 1 + G1Element::SIZE);
+            b[0] |= 0x80;
+            if (buf[0] == 0x03) b[0] |= 0x20;
+            RequireSameDeserialization<G1Element>(b, false);
+            // legacy encoding of the same x
+            std::vector<uint8_t> l = b;
+            l[0] = (b[0] & 0x1f) | ((b[0] & 0x20) ? 0x80 : 0x00);
+            RequireSameDeserialization<G1Element>(l, true);
+        }
+        found = 0;
+        while (found < 4) {
+            g2_t q;
+            fp2_rand(q->x);
+            fp2_zero(q->y);
+            fp2_set_dig(q->z, 1);
+            q->coord = BASIC;
+            fp2_t rhs;
+            ep2_rhs(rhs, q);
+            if (!fp2_srt(q->y, rhs)) continue;
+            if (g2_is_valid(q)) continue;
+            found++;
+            uint8_t buf[G2Element::SIZE + 1];
+            g2_write_bin(buf, G2Element::SIZE + 1, q, 1);
+            // relic coordinate order [x.c0][x.c1] -> new format [x.c1][x.c0]
+            std::vector<uint8_t> b(G2Element::SIZE);
+            std::memcpy(b.data(), buf + 1 + G2Element::SIZE / 2, G2Element::SIZE / 2);
+            std::memcpy(b.data() + G2Element::SIZE / 2, buf + 1, G2Element::SIZE / 2);
+            b[0] |= 0x80;
+            if (buf[0] == 0x03) b[0] |= 0x20;
+            RequireSameDeserialization<G2Element>(b, false);
+            // legacy encoding of the same x
+            std::vector<uint8_t> l(G2Element::SIZE);
+            std::memcpy(l.data(), b.data() + G2Element::SIZE / 2, G2Element::SIZE / 2);
+            std::memcpy(l.data() + G2Element::SIZE / 2, b.data(), G2Element::SIZE / 2);
+            l[0] |= (b[0] & 0x20) ? 0x80 : 0x00;
+            l[G2Element::SIZE / 2] = b[0] & 0x1f;
+            RequireSameDeserialization<G2Element>(l, true);
+        }
+    }
+
+    SECTION("special encodings") {
+        auto with_first = [](size_t size, uint8_t first) {
+            std::vector<uint8_t> v(size, 0);
+            v[0] = first;
+            return v;
+        };
+        for (size_t size : {G1Element::SIZE, G2Element::SIZE}) {
+            // canonical and non-canonical infinity encodings
+            RequireSameDeserializationBothSchemes(with_first(size, 0xc0), size);
+            RequireSameDeserializationBothSchemes(with_first(size, 0xe0), size);
+            RequireSameDeserializationBothSchemes(with_first(size, 0xd0), size);
+            {
+                auto v = with_first(size, 0xc0);
+                v[size - 1] = 1;
+                RequireSameDeserializationBothSchemes(v, size);
+            }
+            // x == 0 encodings without the infinity bit
+            RequireSameDeserializationBothSchemes(with_first(size, 0x80), size);
+            RequireSameDeserializationBothSchemes(with_first(size, 0xa0), size);
+            RequireSameDeserializationBothSchemes(with_first(size, 0x00), size);
+            // header oddities on otherwise-zero payloads
+            RequireSameDeserializationBothSchemes(with_first(size, 0x20), size);
+            RequireSameDeserializationBothSchemes(with_first(size, 0x40), size);
+            RequireSameDeserializationBothSchemes(with_first(size, 0x60), size);
+        }
+    }
+
+    SECTION("mutated valid encodings") {
+        std::vector<uint8_t> seed(32, 0x2a);
+        PrivateKey sk = BasicSchemeMPL().KeyGen(seed);
+        G1Element pk = sk.GetG1Element();
+        std::vector<uint8_t> msg = {1, 2, 3};
+        G2Element sig = BasicSchemeMPL().Sign(sk, msg);
+
+        const auto pk_new = pk.Serialize(false);
+        const auto pk_leg = pk.Serialize(true);
+        const auto sig_new = sig.Serialize(false);
+        const auto sig_leg = sig.Serialize(true);
+
+        auto flip = [&rng](std::vector<uint8_t> v, int flips) {
+            for (int k = 0; k < flips; k++) {
+                v[rng() % v.size()] ^= (uint8_t)(1u << (rng() % 8));
+            }
+            return v;
+        };
+        for (int t = 0; t < 160; t++) {
+            const int flips = 1 + (t % 3);
+            RequireSameDeserialization<G1Element>(flip(pk_new, flips), false);
+            RequireSameDeserialization<G1Element>(flip(pk_leg, flips), true);
+            RequireSameDeserialization<G2Element>(flip(sig_new, flips), false);
+            RequireSameDeserialization<G2Element>(flip(sig_leg, flips), true);
+        }
+    }
+
+    SECTION("random buffers") {
+        for (int t = 0; t < 100; t++) {
+            std::vector<uint8_t> b(G1Element::SIZE), c(G2Element::SIZE);
+            for (auto& x : b) x = (uint8_t)rng();
+            for (auto& x : c) x = (uint8_t)rng();
+            RequireSameDeserializationBothSchemes(b, G1Element::SIZE);
+            RequireSameDeserializationBothSchemes(c, G2Element::SIZE);
+        }
+    }
+
+    SECTION("known invalid vectors from the CheckValid tests") {
+        RequireSameDeserializationBothSchemes(
+            Util::HexToBytes("8d5d0fb73b9c92df4eab4216e48c3e358578b4cc30f82c268bd6fef3bd34b558628daf1afef798d4c3b0fcd8b28c8973"),
+            G1Element::SIZE);
+        RequireSameDeserializationBothSchemes(
+            Util::HexToBytes("11df3a748b713460f9b21083315c0dca1742b7962ca98685be4094d302e84b0884a04c1a55beb0ed921dae1dd66c0111"),
+            G1Element::SIZE);
+        RequireSameDeserializationBothSchemes(
+            Util::HexToBytes("11df3a748b713460f9b21083315c0dca1742b7962ca98685be4094d302e84b0884a04c1a55beb0ed921dae1dd66c0a11"),
+            G1Element::SIZE);
+        RequireSameDeserializationBothSchemes(
+            Util::HexToBytes("0888879c99852460912fd28c7a9138926c1e87fd6609fd2d3d307764e49feb85702fd8f9b3b836bc11f7ce151b769dc7"
+                             "0b760879d26f8c33a29e24f69297f45ef028f0794e63ddb0610db7de1a608b6d6a2129ada62b845004a408f651fd44a5"),
+            G2Element::SIZE);
+        RequireSameDeserializationBothSchemes(
+            Util::HexToBytes("0888879c99852460912fd28c7a9138926c1e87fd6609fd2d3d307764e49feb85702fd8f9b3b836bc11f7ce151b769dc7"
+                             "0b760879d26f8c33a29e24f69297f45ef028f0794e63ddb0610db7de1a608b6d6a2129ada62b845004a408f651fd44a6"),
+            G2Element::SIZE);
+    }
+}
+
 
 int main(int argc, char* argv[])
 {

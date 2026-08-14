@@ -89,6 +89,12 @@ AC_ARG_ENABLE([debug],
   [use_debug=$enableval],
   [use_debug=no])
 
+AC_ARG_ENABLE([blst],
+  [AS_HELP_STRING([--enable-blst],
+  [Use the bundled blst library to accelerate BLS12-381 deserialization [default=auto]])],
+  [use_blst=$enableval],
+  [use_blst=auto])
+
 AC_LANG_PUSH([C])
 
 dnl Check for a flag to turn compiler warnings into errors. This is helpful for checks which may
@@ -433,6 +439,36 @@ AC_ARG_ENABLE([big_endian],
 if test x$use_big_endian = xyes; then
   AC_DEFINE([BIGED],   [1], [Define this symbol if big-endian support is enabled])
 fi
+
+dnl blst provides an accelerated deserialization path for BLS12-381 points.
+dnl It is only usable on 64-bit little-endian x86_64/aarch64 hosts, where the
+dnl bundled assembly is supported and relic's internal field-element layout
+dnl (6x64-bit little-endian limbs, Montgomery form with R = 2^384) matches
+dnl blst's exactly.
+blst_supported=no
+if test x$use_big_endian != xyes; then
+  case $host_cpu in
+    x86_64|amd64|aarch64|arm64)
+      blst_supported=yes
+      ;;
+  esac
+fi
+case $use_blst in
+auto)
+  use_blst=$blst_supported
+  ;;
+yes)
+  if test x$blst_supported != xyes; then
+    AC_MSG_ERROR([blst is not supported on this host (requires little-endian x86_64 or aarch64)])
+  fi
+  ;;
+no)
+  ;;
+*)
+  AC_MSG_ERROR([invalid value for --enable-blst])
+  ;;
+esac
+AM_CONDITIONAL([USE_BLST], [test x"$use_blst" = x"yes"])
 
 use_pkgconfig=yes
 
@@ -899,6 +935,7 @@ echo
 echo "Options used to compile and link:"
 echo "  target os           = $TARGET_OS"
 echo "  backend             = $want_backend"
+echo "  use blst            = $use_blst"
 echo "  build bench         = $use_tests"
 echo "  build test          = $use_bench"
 echo "  use debug           = $use_debug"

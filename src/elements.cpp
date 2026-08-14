@@ -17,11 +17,202 @@
 #include "bls.hpp"
 #include "legacy.hpp"
 
+#ifdef BLS_USE_BLST
+#include <atomic>
+
+#include <blst.h>
+#endif
+
 namespace bls {
+
+#ifdef BLS_USE_BLST
+
+// Accelerated deserialization: blst performs point decompression and subgroup
+// checks several times faster than the relic code path. On the platforms
+// where this path is enabled, blst and relic use the same in-memory
+// representation for prime-field elements -- 6x64-bit little-endian limbs in
+// Montgomery form with R = 2^384 -- so a point accepted by blst can be copied
+// limb-for-limb into relic's point structs. This is enforced at compile time
+// below and verified by unit tests.
+//
+// The fast path must preserve relic's acceptance behaviour bit-for-bit, since
+// deserialization acceptance is consensus-critical in Dash Core. It therefore
+// only decides inputs it can prove both paths agree on: a well-formed
+// non-infinity encoding that decompresses to a point on the curve (and, when
+// required, passes the subgroup check). Everything else -- infinity
+// encodings, malformed headers, x >= p, x == 0, points not on the curve -- is
+// handed back unchanged to the original relic path (FALLBACK), which keeps
+// the exact historical semantics, error types and messages.
+
+static_assert(RLC_FP_DIGS == 6, "blst fast path requires 6x64-bit fp limbs");
+static_assert(sizeof(dig_t) == 8, "blst fast path requires 64-bit limbs");
+static_assert(sizeof(blst_fp) == sizeof(fp_st), "blst/relic fp layout mismatch");
+static_assert(sizeof(blst_fp2) == 2 * sizeof(fp_st), "blst/relic fp2 layout mismatch");
+
+static std::atomic<bool> g_fast_path_enabled{true};
+
+void SetDeserializationFastPathEnabled(const bool enabled)
+{
+    g_fast_path_enabled.store(enabled, std::memory_order_relaxed);
+}
+
+bool IsDeserializationFastPathEnabled()
+{
+    return g_fast_path_enabled.load(std::memory_order_relaxed);
+}
+
+namespace {
+
+enum class FastPathResult {
+    ACCEPT,        // out holds a decoded (and, if requested, subgroup-checked) point
+    BAD_SUBGROUP,  // the point decodes but is not in the r-order subgroup
+    FALLBACK,      // undecided: the caller must run the original relic path
+};
+
+bool HasOnlyZerosBelowHeader(const uint8_t* bytes, size_t len)
+{
+    if ((bytes[0] & 0x1f) != 0) return false;
+    for (size_t i = 1; i < len; i++) {
+        if (bytes[i] != 0) return false;
+    }
+    return true;
+}
+
+FastPathResult G1FromBytesBlst(g1_st* out, const uint8_t* bytes, const bool fLegacy, const bool fSubgroupCheck)
+{
+    if (!IsDeserializationFastPathEnabled()) {
+        return FastPathResult::FALLBACK;
+    }
+
+    uint8_t buffer[G1Element::SIZE];
+
+    if ((bytes[0] & 0xc0) == 0xc0) {
+        // (candidate) infinity encoding: original path enforces canonicality
+        return FastPathResult::FALLBACK;
+    }
+    std::memcpy(buffer, bytes, G1Element::SIZE);
+    if (fLegacy) {
+        // legacy format: bit7 of byte 0 is the sign of y, no compression bit
+        if (bytes[0] & 0x60) {
+            // implies x >= 2^381 > p: original path rejects via fp_read_bin
+            return FastPathResult::FALLBACK;
+        }
+        buffer[0] = 0x80 | ((bytes[0] & 0x80) ? 0x20 : 0x00) | (bytes[0] & 0x1f);
+    } else {
+        if ((bytes[0] & 0xc0) != 0x80) {
+            // original path rejects: must start with 0b10
+            return FastPathResult::FALLBACK;
+        }
+        if (HasOnlyZerosBelowHeader(bytes, G1Element::SIZE)) {
+            // x == 0 without the infinity bit: original path rejects
+            return FastPathResult::FALLBACK;
+        }
+    }
+
+    blst_p1_affine p;
+    if (blst_p1_uncompress(&p, buffer) != BLST_SUCCESS) {
+        // x >= p, x not on the curve, or other oddity: keep the original
+        // path's exact behaviour (including the legacy scheme's acceptance
+        // of encodings that fail decompression without throwing)
+        return FastPathResult::FALLBACK;
+    }
+    if (blst_p1_affine_is_inf(&p)) {
+        return FastPathResult::FALLBACK;
+    }
+    if (fSubgroupCheck && !blst_p1_affine_in_g1(&p)) {
+        return FastPathResult::BAD_SUBGROUP;
+    }
+    std::memcpy(out->x, &p.x, sizeof(out->x));
+    std::memcpy(out->y, &p.y, sizeof(out->y));
+    fp_set_dig(out->z, 1);
+    out->coord = BASIC;
+    return FastPathResult::ACCEPT;
+}
+
+FastPathResult G2FromBytesBlst(g2_st* out, const uint8_t* bytes, const bool fLegacy, const bool fSubgroupCheck)
+{
+    if (!IsDeserializationFastPathEnabled()) {
+        return FastPathResult::FALLBACK;
+    }
+
+    uint8_t buffer[G2Element::SIZE];
+
+    if ((bytes[0] & 0xc0) == 0xc0) {
+        return FastPathResult::FALLBACK;
+    }
+    if (fLegacy) {
+        // legacy format: [x.c0 (sign of y in bit7 of byte 0)][x.c1]
+        if (bytes[0] & 0x60) {
+            // implies x.c0 >= 2^381 > p: original path rejects
+            return FastPathResult::FALLBACK;
+        }
+        if (bytes[48] & 0xe0) {
+            // implies x.c1 >= 2^381 > p: original path rejects
+            return FastPathResult::FALLBACK;
+        }
+        // IETF order is [x.c1][x.c0] with the header in byte 0
+        std::memcpy(buffer, bytes + 48, G2Element::SIZE / 2);
+        std::memcpy(buffer + G2Element::SIZE / 2, bytes, G2Element::SIZE / 2);
+        buffer[G2Element::SIZE / 2] = bytes[0] & 0x1f;
+        buffer[0] = 0x80 | ((bytes[0] & 0x80) ? 0x20 : 0x00) | (bytes[48] & 0x1f);
+    } else {
+        if ((bytes[0] & 0xc0) != 0x80) {
+            return FastPathResult::FALLBACK;
+        }
+        if ((bytes[48] & 0xe0) != 0x00) {
+            // original path rejects: 48th byte must start with 0b000
+            return FastPathResult::FALLBACK;
+        }
+        if (HasOnlyZerosBelowHeader(bytes, G2Element::SIZE)) {
+            return FastPathResult::FALLBACK;
+        }
+        std::memcpy(buffer, bytes, G2Element::SIZE);
+    }
+
+    blst_p2_affine p;
+    if (blst_p2_uncompress(&p, buffer) != BLST_SUCCESS) {
+        return FastPathResult::FALLBACK;
+    }
+    if (blst_p2_affine_is_inf(&p)) {
+        return FastPathResult::FALLBACK;
+    }
+    if (fSubgroupCheck && !blst_p2_affine_in_g2(&p)) {
+        return FastPathResult::BAD_SUBGROUP;
+    }
+    std::memcpy(out->x, &p.x, sizeof(out->x));
+    std::memcpy(out->y, &p.y, sizeof(out->y));
+    fp2_set_dig(out->z, 1);
+    out->coord = BASIC;
+    return FastPathResult::ACCEPT;
+}
+
+} // namespace
+
+#else // BLS_USE_BLST
+
+void SetDeserializationFastPathEnabled(const bool enabled) {}
+
+bool IsDeserializationFastPathEnabled() { return false; }
+
+#endif // BLS_USE_BLST
 
 const size_t G1Element::SIZE;
 
 G1Element G1Element::FromBytes(Bytes const bytes, bool fLegacy) {
+#ifdef BLS_USE_BLST
+    if (bytes.size() == SIZE) {
+        G1Element ele;
+        switch (G1FromBytesBlst(ele.p, bytes.begin(), fLegacy, !fLegacy)) {
+            case FastPathResult::ACCEPT:
+                return ele;
+            case FastPathResult::BAD_SUBGROUP:
+                // same error as G1Element::CheckValid()
+                throw std::invalid_argument("G1 element is invalid");
+            case FastPathResult::FALLBACK:
+                break;
+        }
+    }
+#endif
     G1Element ele = G1Element::FromBytesUnchecked(bytes, fLegacy);
     if (!fLegacy) {
         ele.CheckValid();
@@ -34,6 +225,15 @@ G1Element G1Element::FromBytesUnchecked(Bytes const bytes, bool fLegacy)
     if (bytes.size() != SIZE) {
         throw std::invalid_argument("G1Element::FromBytes: Invalid size");
     }
+
+#ifdef BLS_USE_BLST
+    {
+        G1Element fast;
+        if (G1FromBytesBlst(fast.p, bytes.begin(), fLegacy, false) == FastPathResult::ACCEPT) {
+            return fast;
+        }
+    }
+#endif
 
     G1Element ele;
 
@@ -137,6 +337,21 @@ bool G1Element::IsValid() const {
     // https://github.com/relic-toolkit/relic/commit/f3be2babb955cf9f82743e0ae5ef265d3da6c02b
     if (g1_is_infty((g1_st*)p) == 1)
         return true;
+
+#ifdef BLS_USE_BLST
+    // For affine points (z == 1) the coordinates can be handed to blst
+    // directly, which validates several times faster than relic. The
+    // all-zero point (x == 0, y == 0, z == 1) must be excluded: blst treats
+    // an all-zero affine struct as infinity while relic considers it an
+    // invalid point.
+    if (IsDeserializationFastPathEnabled() && p->coord == BASIC &&
+        !(fp_is_zero(p->x) && fp_is_zero(p->y))) {
+        blst_p1_affine a;
+        std::memcpy(&a.x, p->x, sizeof(a.x));
+        std::memcpy(&a.y, p->y, sizeof(a.y));
+        return blst_p1_affine_on_curve(&a) && blst_p1_affine_in_g1(&a);
+    }
+#endif
 
     return g1_is_valid((g1_st*)p);
 }
@@ -243,6 +458,20 @@ G1Element operator*(const bn_t& k, const G1Element& a) { return a * k; }
 const size_t G2Element::SIZE;
 
 G2Element G2Element::FromBytes(Bytes const bytes, const bool fLegacy) {
+#ifdef BLS_USE_BLST
+    if (bytes.size() == SIZE) {
+        G2Element ele;
+        switch (G2FromBytesBlst(ele.q, bytes.begin(), fLegacy, !fLegacy)) {
+            case FastPathResult::ACCEPT:
+                return ele;
+            case FastPathResult::BAD_SUBGROUP:
+                // same error as G2Element::CheckValid()
+                throw std::invalid_argument("G2 element is invalid");
+            case FastPathResult::FALLBACK:
+                break;
+        }
+    }
+#endif
     G2Element ele = G2Element::FromBytesUnchecked(bytes, fLegacy);
     if (!fLegacy) {
         ele.CheckValid();
@@ -255,6 +484,15 @@ G2Element G2Element::FromBytesUnchecked(Bytes const bytes, const bool fLegacy)
     if (bytes.size() != SIZE) {
         throw std::invalid_argument("G2Element::FromBytes: Invalid size");
     }
+
+#ifdef BLS_USE_BLST
+    {
+        G2Element fast;
+        if (G2FromBytesBlst(fast.q, bytes.begin(), fLegacy, false) == FastPathResult::ACCEPT) {
+            return fast;
+        }
+    }
+#endif
 
     G2Element ele;
     uint8_t buffer[G2Element::SIZE + 1];
@@ -360,6 +598,21 @@ bool G2Element::IsValid() const {
     // https://github.com/relic-toolkit/relic/commit/f3be2babb955cf9f82743e0ae5ef265d3da6c02b
     if (g2_is_infty((g2_st*)q) == 1)
         return true;
+
+#ifdef BLS_USE_BLST
+    // For affine points (z == 1) the coordinates can be handed to blst
+    // directly, which validates several times faster than relic. The
+    // all-zero point (x == 0, y == 0, z == 1) must be excluded: blst treats
+    // an all-zero affine struct as infinity while relic considers it an
+    // invalid point.
+    if (IsDeserializationFastPathEnabled() && q->coord == BASIC &&
+        !(fp2_is_zero(((g2_st*)q)->x) && fp2_is_zero(((g2_st*)q)->y))) {
+        blst_p2_affine a;
+        std::memcpy(&a.x, q->x, sizeof(a.x));
+        std::memcpy(&a.y, q->y, sizeof(a.y));
+        return blst_p2_affine_on_curve(&a) && blst_p2_affine_in_g2(&a);
+    }
+#endif
 
     return g2_is_valid((g2_st*)q);
 }
