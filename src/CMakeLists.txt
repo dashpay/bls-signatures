@@ -3,15 +3,18 @@ source_group("SrcHeaders" FILES ${HEADERS})
 
 list(APPEND bls_sources
   ${HEADERS}
-  privatekey.cpp
   bls.cpp
   chaincode.cpp
   elements.cpp
   extendedprivatekey.cpp
   extendedpublickey.cpp
+  hdkeys.cpp
+  hkdf.cpp
   legacy.cpp
+  privatekey.cpp
   schemes.cpp
   threshold.cpp
+  util.cpp
   ${blst_SOURCE_DIR}/src/server.c
 )
 
