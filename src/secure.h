@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <new>
 #include <vector>
 
@@ -133,6 +134,49 @@ struct SecureAllocator {
 
 template <typename T>
 using SecVector = std::vector<T, SecureAllocator<T>>;
+
+/**
+ * Returns storage from SecAlloc once it is no longer needed.
+ *
+ * It carries the count SecAlloc was given, as SecFree has to be told how many
+ * bytes to clear and a unique_ptr does not remember it.
+ */
+template <class T>
+struct SecDeleter {
+    explicit SecDeleter(size_t nCountIn) : nCount(nCountIn) {}
+
+    /**
+     * Clears and releases the storage.
+     *
+     * @param   ptr  Storage from SecAlloc, or nullptr.
+     */
+    void operator()(T* ptr) const { SecFree(ptr, nCount * sizeof(T)); }
+
+private:
+    size_t nCount;
+};
+
+/**
+ * Owns storage from SecAlloc, so a throw does not leak it.
+ *
+ * The storage is not constructed or destroyed, only cleared when released,
+ * which suits the blst structures it is used for.
+ */
+template <class T>
+using SecPtr = std::unique_ptr<T, SecDeleter<T>>;
+
+/**
+ * Allocates owned storage for numTs objects.
+ *
+ * @param   numTs  How many objects to make room for.
+ * @returns Storage for numTs objects, cleared when it goes out of scope.
+ * @throws  std::bad_alloc as SecAlloc does.
+ */
+template <class T>
+SecPtr<T> SecMake(size_t numTs = 1)
+{
+    return SecPtr<T>(SecAlloc<T>(numTs), SecDeleter<T>{numTs});
+}
 } // namespace util
 } // namespace bls
 

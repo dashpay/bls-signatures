@@ -137,11 +137,10 @@ const G1Element &PrivateKey::GetG1Element() const
 {
     if (!fG1CacheValid) {
         CheckKeyData();
-        blst_p1 *p = util::SecAlloc<blst_p1>(1);
-        blst_sk_to_pk_in_g1(p, keydata);
+        util::SecPtr<blst_p1> p = util::SecMake<blst_p1>();
+        blst_sk_to_pk_in_g1(p.get(), keydata);
 
         g1Cache = G1Element::FromNative(*p);
-        util::SecFree(p, sizeof(blst_p1));
         fG1CacheValid = true;
     }
     return g1Cache;
@@ -151,11 +150,10 @@ const G2Element &PrivateKey::GetG2Element() const
 {
     if (!fG2CacheValid) {
         CheckKeyData();
-        blst_p2 *q = util::SecAlloc<blst_p2>(1);
-        blst_sk_to_pk_in_g2(q, keydata);
+        util::SecPtr<blst_p2> q = util::SecMake<blst_p2>();
+        blst_sk_to_pk_in_g2(q.get(), keydata);
 
         g2Cache = G2Element::FromNative(*q);
-        util::SecFree(q, sizeof(blst_p2));
         fG2CacheValid = true;
     }
     return g2Cache;
@@ -170,14 +168,12 @@ G1Element operator*(const G1Element &a, const PrivateKey &k)
 {
     k.CheckKeyData();
 
-    blst_p1 *ans = util::SecAlloc<blst_p1>(1);
-    a.ToNative(ans);
+    util::SecPtr<blst_p1> ans = util::SecMake<blst_p1>();
+    a.ToNative(ans.get());
     util::SecVector<byte> bte(32);
     blst_lendian_from_scalar(bte.data(), k.keydata);
-    blst_p1_mult(ans, ans, bte.data(), 256);
-    G1Element ret = G1Element::FromNative(*ans);
-    util::SecFree(ans, sizeof(blst_p1));
-    return ret;
+    blst_p1_mult(ans.get(), ans.get(), bte.data(), 256);
+    return G1Element::FromNative(*ans);
 }
 
 G1Element operator*(const PrivateKey &k, const G1Element &a) { return a * k; }
@@ -185,14 +181,12 @@ G1Element operator*(const PrivateKey &k, const G1Element &a) { return a * k; }
 G2Element operator*(const G2Element &a, const PrivateKey &k)
 {
     k.CheckKeyData();
-    blst_p2 *ans = util::SecAlloc<blst_p2>(1);
-    a.ToNative(ans);
+    util::SecPtr<blst_p2> ans = util::SecMake<blst_p2>();
+    a.ToNative(ans.get());
     util::SecVector<byte> bte(32);
     blst_lendian_from_scalar(bte.data(), k.keydata);
-    blst_p2_mult(ans, ans, bte.data(), 256);
-    G2Element ret = G2Element::FromNative(*ans);
-    util::SecFree(ans, sizeof(blst_p2));
-    return ret;
+    blst_p2_mult(ans.get(), ans.get(), bte.data(), 256);
+    return G2Element::FromNative(*ans);
 }
 
 G2Element operator*(const PrivateKey &k, const G2Element &a) { return a * k; }
@@ -210,14 +204,12 @@ PrivateKey operator*(const blst_scalar& a, const PrivateKey& k) { return k * a; 
 G2Element PrivateKey::GetG2Power(const G2Element &element) const
 {
     CheckKeyData();
-    blst_p2 *q = util::SecAlloc<blst_p2>(1);
-    element.ToNative(q);
+    util::SecPtr<blst_p2> q = util::SecMake<blst_p2>();
+    element.ToNative(q.get());
     util::SecVector<byte> bte(32);
     blst_lendian_from_scalar(bte.data(), keydata);
-    blst_p2_mult(q, q, bte.data(), 255);
-    const G2Element ret = G2Element::FromNative(*q);
-    util::SecFree(q, sizeof(blst_p2));
-    return ret;
+    blst_p2_mult(q.get(), q.get(), bte.data(), 255);
+    return G2Element::FromNative(*q);
 }
 
 PrivateKey PrivateKey::Aggregate(std::vector<PrivateKey> const &privateKeys)
@@ -292,16 +284,14 @@ G2Element PrivateKey::SignG2(
         throw std::invalid_argument("legacy signing requires a 32-byte message hash");
     }
 
-    blst_p2 *pt = util::SecAlloc<blst_p2>(1);
+    util::SecPtr<blst_p2> pt = util::SecMake<blst_p2>();
     if (fLegacy) {
-        ep2_map_legacy(pt, msg, len);
+        ep2_map_legacy(pt.get(), msg, len);
     } else {
-        blst_hash_to_g2(pt, msg, len, dst, dst_len, nullptr, 0);
+        blst_hash_to_g2(pt.get(), msg, len, dst, dst_len, nullptr, 0);
     }
-    blst_sign_pk_in_g1(pt, pt, keydata);
-    G2Element ret = G2Element::FromNative(*pt);
-    util::SecFree(pt, sizeof(blst_p2));
-    return ret;
+    blst_sign_pk_in_g1(pt.get(), pt.get(), keydata);
+    return G2Element::FromNative(*pt);
 }
 
 void PrivateKey::AllocateKeyData()

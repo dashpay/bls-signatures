@@ -27,16 +27,12 @@ PrivateKey HDKeys::KeyGen(const Bytes& seed)
         throw std::invalid_argument("Seed size must be at least 32 bytes");
     }
 
-    blst_scalar* skBn = util::SecAlloc<blst_scalar>(1);
-    blst_keygen_v3(skBn, seed.begin(), seed.size(), info, infoLen);
+    util::SecPtr<blst_scalar> skBn = util::SecMake<blst_scalar>();
+    blst_keygen_v3(skBn.get(), seed.begin(), seed.size(), info, infoLen);
     util::SecVector<uint8_t> skBytes(32);
-    blst_bendian_from_scalar(skBytes.data(), skBn);
+    blst_bendian_from_scalar(skBytes.data(), skBn.get());
 
-    PrivateKey k = PrivateKey::FromBytes(Bytes(skBytes.data(), 32));
-
-    util::SecFree(skBn, sizeof(blst_scalar));
-
-    return k;
+    return PrivateKey::FromBytes(Bytes(skBytes.data(), 32));
 }
 
 void HDKeys::IKMToLamportSk(

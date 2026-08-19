@@ -209,4 +209,20 @@ TEST_CASE("Secure release clears the bytes before handing them back")
             return b == 0;
         }));
     }
+
+    SECTION("util::SecPtr, through the deleter")
+    {
+        std::memset(g_arena, 0xcd, sizeof(g_arena));
+        {
+            ArenaGuard guard;
+            bls::util::SecPtr<uint32_t> secret =
+                bls::util::SecMake<uint32_t>(16);
+            std::fill(secret.get(), secret.get() + 16, 0xabababab);
+        }
+        // The whole array, not just its first object, which a deleter holding
+        // no count could not have reached.
+        REQUIRE(std::all_of(g_arena, g_arena + 16 * sizeof(uint32_t),
+                            [](uint8_t b) { return b == 0; }));
+        REQUIRE(g_arena[16 * sizeof(uint32_t)] == 0xcd);
+    }
 }
