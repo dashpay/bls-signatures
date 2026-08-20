@@ -181,7 +181,7 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
     static uint32_t FourBytesToInt(const uint8_t* bytes) {
         uint32_t sum = 0;
         for (size_t i = 0; i < 4; i++) {
-            uint32_t addend = bytes[i] << (8 * (3 - i));
+            uint32_t addend = static_cast<uint32_t>(bytes[i]) << (8 * (3 - i));
             sum += addend;
         }
         return sum;

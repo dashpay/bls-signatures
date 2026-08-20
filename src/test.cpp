@@ -632,6 +632,12 @@ TEST_CASE("Util tests")
         REQUIRE(Util::HexToBytes("0xabcd") == expected);
         REQUIRE(Util::HexToBytes("0Xabcd") == expected);
     }
+
+    SECTION("Should read a set top bit without sign extension")
+    {
+        const uint8_t bytes[4] = {0xff, 0x00, 0x00, 0x80};
+        REQUIRE(Util::FourBytesToInt(bytes) == 0xff000080u);
+    }
 }
 
 TEST_CASE("Signature tests")
