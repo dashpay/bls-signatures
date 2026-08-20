@@ -155,7 +155,7 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
         }
         std::vector<uint8_t> ret = std::vector<uint8_t>();
         size_t start_at = 0;
-        if (hex.rfind("0x", 0) == 0 || hex.rfind("0x", 0) == 0) {
+        if (hex.rfind("0x", 0) == 0 || hex.rfind("0X", 0) == 0) {
             start_at = 2;
         }
 

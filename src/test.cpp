@@ -625,6 +625,13 @@ TEST_CASE("Util tests")
         uint32_t again = Util::FourBytesToInt(result);
         REQUIRE(again == x);
     }
+
+    SECTION("Should accept either case of the hex prefix")
+    {
+        const vector<uint8_t> expected{0xab, 0xcd};
+        REQUIRE(Util::HexToBytes("0xabcd") == expected);
+        REQUIRE(Util::HexToBytes("0Xabcd") == expected);
+    }
 }
 
 TEST_CASE("Signature tests")
