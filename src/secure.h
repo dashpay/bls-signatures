@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <limits>
 #include <new>
+#include <vector>
 
 namespace bls {
 namespace util {
@@ -85,6 +86,53 @@ T* SecAlloc(size_t numTs)
     }
     return static_cast<T*>(SecMalloc(sizeof(T) * numTs));
 }
+
+/**
+ * An allocator over the library's secure allocation.
+ */
+template <typename T>
+struct SecureAllocator {
+    using value_type = T;
+
+    SecureAllocator() = default;
+    template <typename U>
+    SecureAllocator(const SecureAllocator<U>&) noexcept {}
+
+    /**
+     * Allocates storage for n objects.
+     *
+     * @param   n  How many objects to make room for.
+     * @returns Storage for n objects, cleared when deallocated.
+     * @throws  std::bad_alloc if n objects do not fit in a size_t, or if the
+     *          allocator cannot satisfy the request.
+     */
+    T* allocate(size_t n) { return SecAlloc<T>(n); }
+
+    /**
+     * Returns storage from allocate, clearing it on the way out.
+     *
+     * @param   p  Storage from a previous allocate.
+     * @param   n  The count that allocate was given, so the bytes can be
+     *             cleared before release rather than left to the allocator.
+     */
+    void deallocate(T* p, size_t n) { SecFree(p, n * sizeof(T)); }
+
+    template <typename U>
+    friend bool operator==(
+        const SecureAllocator&, const SecureAllocator<U>&) noexcept
+    {
+        return true;
+    }
+    template <typename U>
+    friend bool operator!=(
+        const SecureAllocator&, const SecureAllocator<U>&) noexcept
+    {
+        return false;
+    }
+};
+
+template <typename T>
+using SecVector = std::vector<T, SecureAllocator<T>>;
 } // namespace util
 } // namespace bls
 

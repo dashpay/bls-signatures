@@ -29,17 +29,16 @@ PrivateKey PrivateKey::FromSeedBIP32(const Bytes& seed) {
     const uint8_t hmacKey[] = {66, 76, 83, 32, 112, 114, 105, 118, 97, 116, 101,
                                32, 107, 101, 121, 32, 115, 101, 101, 100};
 
-    auto* hash = util::SecAlloc<uint8_t>(
-        PrivateKey::PRIVATE_KEY_SIZE);
+    util::SecVector<uint8_t> hash(PrivateKey::PRIVATE_KEY_SIZE);
 
     // Hash the seed into sk
-    Util::md_hmac(hash, seed.begin(), seed.size(), hmacKey, sizeof(hmacKey));
+    Util::md_hmac(hash.data(), seed.begin(), seed.size(), hmacKey,
+                  sizeof(hmacKey));
 
     // Make sure private key is less than the curve order
     PrivateKey k;
-    blst_scalar_from_be_bytes(k.keydata, hash, PrivateKey::PRIVATE_KEY_SIZE);
+    blst_scalar_from_be_bytes(k.keydata, hash.data(), hash.size());
 
-    util::SecFree(hash, PrivateKey::PRIVATE_KEY_SIZE);
     return k;
 }
 
@@ -173,12 +172,11 @@ G1Element operator*(const G1Element &a, const PrivateKey &k)
 
     blst_p1 *ans = util::SecAlloc<blst_p1>(1);
     a.ToNative(ans);
-    byte *bte = util::SecAlloc<byte>(32);
-    blst_lendian_from_scalar(bte, k.keydata);
-    blst_p1_mult(ans, ans, bte, 256);
+    util::SecVector<byte> bte(32);
+    blst_lendian_from_scalar(bte.data(), k.keydata);
+    blst_p1_mult(ans, ans, bte.data(), 256);
     G1Element ret = G1Element::FromNative(*ans);
     util::SecFree(ans, sizeof(blst_p1));
-    util::SecFree(bte, 32);
     return ret;
 }
 
@@ -189,12 +187,11 @@ G2Element operator*(const G2Element &a, const PrivateKey &k)
     k.CheckKeyData();
     blst_p2 *ans = util::SecAlloc<blst_p2>(1);
     a.ToNative(ans);
-    byte *bte = util::SecAlloc<byte>(32);
-    blst_lendian_from_scalar(bte, k.keydata);
-    blst_p2_mult(ans, ans, bte, 256);
+    util::SecVector<byte> bte(32);
+    blst_lendian_from_scalar(bte.data(), k.keydata);
+    blst_p2_mult(ans, ans, bte.data(), 256);
     G2Element ret = G2Element::FromNative(*ans);
     util::SecFree(ans, sizeof(blst_p2));
-    util::SecFree(bte, 32);
     return ret;
 }
 
@@ -215,12 +212,11 @@ G2Element PrivateKey::GetG2Power(const G2Element &element) const
     CheckKeyData();
     blst_p2 *q = util::SecAlloc<blst_p2>(1);
     element.ToNative(q);
-    byte *bte = util::SecAlloc<byte>(32);
-    blst_lendian_from_scalar(bte, keydata);
-    blst_p2_mult(q, q, bte, 255);
+    util::SecVector<byte> bte(32);
+    blst_lendian_from_scalar(bte.data(), keydata);
+    blst_p2_mult(q, q, bte.data(), 255);
     const G2Element ret = G2Element::FromNative(*q);
     util::SecFree(q, sizeof(blst_p2));
-    util::SecFree(bte, 32);
     return ret;
 }
 

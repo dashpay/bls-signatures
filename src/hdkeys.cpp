@@ -29,13 +29,12 @@ PrivateKey HDKeys::KeyGen(const Bytes& seed)
 
     blst_scalar* skBn = util::SecAlloc<blst_scalar>(1);
     blst_keygen_v3(skBn, seed.begin(), seed.size(), info, infoLen);
-    uint8_t* skBytes = util::SecAlloc<uint8_t>(32);
-    blst_bendian_from_scalar(skBytes, skBn);
+    util::SecVector<uint8_t> skBytes(32);
+    blst_bendian_from_scalar(skBytes.data(), skBn);
 
-    PrivateKey k = PrivateKey::FromBytes(Bytes(skBytes, 32));
+    PrivateKey k = PrivateKey::FromBytes(Bytes(skBytes.data(), 32));
 
     util::SecFree(skBn, sizeof(blst_scalar));
-    util::SecFree(skBytes, 32);
 
     return k;
 }
@@ -65,92 +64,82 @@ void HDKeys::ParentSkToLamportPK(
     const PrivateKey& parentSk,
     uint32_t index)
 {
-    uint8_t* salt = util::SecAlloc<uint8_t>(4);
-    uint8_t* ikm = util::SecAlloc<uint8_t>(HASH_LEN);
-    uint8_t* notIkm = util::SecAlloc<uint8_t>(HASH_LEN);
-    uint8_t* lamport0 = util::SecAlloc<uint8_t>(HASH_LEN * 255);
-    uint8_t* lamport1 = util::SecAlloc<uint8_t>(HASH_LEN * 255);
+    util::SecVector<uint8_t> salt(4);
+    util::SecVector<uint8_t> ikm(HASH_LEN);
+    util::SecVector<uint8_t> notIkm(HASH_LEN);
+    util::SecVector<uint8_t> lamport0(HASH_LEN * 255);
+    util::SecVector<uint8_t> lamport1(HASH_LEN * 255);
 
-    Util::IntToFourBytes(salt, index);
-    parentSk.Serialize(ikm);
+    Util::IntToFourBytes(salt.data(), index);
+    parentSk.Serialize(ikm.data());
 
     for (size_t i = 0; i < HASH_LEN; i++) {  // Flips the bits
         notIkm[i] = ikm[i] ^ 0xff;
     }
 
-    HDKeys::IKMToLamportSk(lamport0, ikm, HASH_LEN, salt, 4);
-    HDKeys::IKMToLamportSk(lamport1, notIkm, HASH_LEN, salt, 4);
+    HDKeys::IKMToLamportSk(
+        lamport0.data(), ikm.data(), HASH_LEN, salt.data(), 4);
+    HDKeys::IKMToLamportSk(
+        lamport1.data(), notIkm.data(), HASH_LEN, salt.data(), 4);
 
-    uint8_t* lamportPk = util::SecAlloc<uint8_t>(HASH_LEN * 255 * 2);
-
-    for (size_t i = 0; i < 255; i++) {
-        Util::Hash256(
-            lamportPk + i * HASH_LEN, lamport0 + i * HASH_LEN, HASH_LEN);
-    }
+    util::SecVector<uint8_t> lamportPk(HASH_LEN * 255 * 2);
 
     for (size_t i = 0; i < 255; i++) {
         Util::Hash256(
-            lamportPk + 255 * HASH_LEN + i * HASH_LEN,
-            lamport1 + i * HASH_LEN,
+            lamportPk.data() + i * HASH_LEN,
+            lamport0.data() + i * HASH_LEN,
             HASH_LEN);
     }
-    Util::Hash256(outputLamportPk, lamportPk, HASH_LEN * 255 * 2);
 
-    util::SecFree(salt, 4);
-    util::SecFree(ikm, HASH_LEN);
-    util::SecFree(notIkm, HASH_LEN);
-    util::SecFree(lamport0, HASH_LEN * 255);
-    util::SecFree(lamport1, HASH_LEN * 255);
-    util::SecFree(lamportPk, HASH_LEN * 255 * 2);
+    for (size_t i = 0; i < 255; i++) {
+        Util::Hash256(
+            lamportPk.data() + 255 * HASH_LEN + i * HASH_LEN,
+            lamport1.data() + i * HASH_LEN,
+            HASH_LEN);
+    }
+    Util::Hash256(outputLamportPk, lamportPk.data(), HASH_LEN * 255 * 2);
 }
 
 PrivateKey HDKeys::DeriveChildSk(const PrivateKey& parentSk, uint32_t index)
 {
-    uint8_t* lamportPk = util::SecAlloc<uint8_t>(HASH_LEN);
-    HDKeys::ParentSkToLamportPK(lamportPk, parentSk, index);
-    std::vector<uint8_t> lamportPkVector(lamportPk, lamportPk + HASH_LEN);
-    PrivateKey child = HDKeys::KeyGen(lamportPkVector);
-    util::SecFree(lamportPk, HASH_LEN);
-    return child;
+    util::SecVector<uint8_t> lamportPk(HASH_LEN);
+    HDKeys::ParentSkToLamportPK(lamportPk.data(), parentSk, index);
+    return HDKeys::KeyGen(Bytes(lamportPk.data(), lamportPk.size()));
 }
 
 PrivateKey HDKeys::DeriveChildSkUnhardened(
     const PrivateKey& parentSk,
     uint32_t index)
 {
-    uint8_t* buf = util::SecAlloc<uint8_t>(G1Element::SIZE + 4);
-    uint8_t* digest = util::SecAlloc<uint8_t>(HASH_LEN);
+    util::SecVector<uint8_t> buf(G1Element::SIZE + 4);
+    util::SecVector<uint8_t> digest(HASH_LEN);
     memcpy(
-        buf, parentSk.GetG1Element().Serialize().data(), G1Element::SIZE);
-    Util::IntToFourBytes(buf + G1Element::SIZE, index);
-    Util::Hash256(digest, buf, G1Element::SIZE + 4);
+        buf.data(),
+        parentSk.GetG1Element().Serialize().data(),
+        G1Element::SIZE);
+    Util::IntToFourBytes(buf.data() + G1Element::SIZE, index);
+    Util::Hash256(digest.data(), buf.data(), G1Element::SIZE + 4);
 
-    PrivateKey ret = PrivateKey::Aggregate(
-        {parentSk, PrivateKey::FromBytes(Bytes(digest, HASH_LEN), true)});
-
-    util::SecFree(buf, G1Element::SIZE + 4);
-    util::SecFree(digest, HASH_LEN);
-    return ret;
+    return PrivateKey::Aggregate(
+        {parentSk,
+         PrivateKey::FromBytes(Bytes(digest.data(), HASH_LEN), true)});
 }
 
 G1Element HDKeys::DeriveChildG1Unhardened(
     const G1Element& pk,
     uint32_t index)
 {
-    uint8_t* buf = util::SecAlloc<uint8_t>(G1Element::SIZE + 4);
-    uint8_t* digest = util::SecAlloc<uint8_t>(HASH_LEN);
-    memcpy(buf, pk.Serialize().data(), G1Element::SIZE);
+    util::SecVector<uint8_t> buf(G1Element::SIZE + 4);
+    util::SecVector<uint8_t> digest(HASH_LEN);
+    memcpy(buf.data(), pk.Serialize().data(), G1Element::SIZE);
 
-    Util::IntToFourBytes(buf + G1Element::SIZE, index);
-    Util::Hash256(digest, buf, G1Element::SIZE + 4);
+    Util::IntToFourBytes(buf.data() + G1Element::SIZE, index);
+    Util::Hash256(digest.data(), buf.data(), G1Element::SIZE + 4);
 
     blst_scalar nonce;
     // The digest is big-endian; upstream chia loaded it as little-endian,
     // which only worked because operator* reversed the bytes again.
-    blst_scalar_from_bendian(&nonce, digest);
-
-    util::SecFree(buf, G1Element::SIZE + 4);
-    util::SecFree(digest, HASH_LEN);
+    blst_scalar_from_bendian(&nonce, digest.data());
 
     G1Element gen = G1Element::Generator();
 
@@ -161,19 +150,16 @@ G2Element HDKeys::DeriveChildG2Unhardened(
     const G2Element& pk,
     uint32_t index)
 {
-    uint8_t* buf = util::SecAlloc<uint8_t>(G2Element::SIZE + 4);
-    uint8_t* digest = util::SecAlloc<uint8_t>(HASH_LEN);
-    memcpy(buf, pk.Serialize().data(), G2Element::SIZE);
-    Util::IntToFourBytes(buf + G2Element::SIZE, index);
-    Util::Hash256(digest, buf, G2Element::SIZE + 4);
+    util::SecVector<uint8_t> buf(G2Element::SIZE + 4);
+    util::SecVector<uint8_t> digest(HASH_LEN);
+    memcpy(buf.data(), pk.Serialize().data(), G2Element::SIZE);
+    Util::IntToFourBytes(buf.data() + G2Element::SIZE, index);
+    Util::Hash256(digest.data(), buf.data(), G2Element::SIZE + 4);
 
     blst_scalar nonce;
     // The digest is big-endian; upstream chia loaded it as little-endian,
     // which only worked because operator* reversed the bytes again.
-    blst_scalar_from_bendian(&nonce, digest);
-
-    util::SecFree(buf, G2Element::SIZE + 4);
-    util::SecFree(digest, HASH_LEN);
+    blst_scalar_from_bendian(&nonce, digest.data());
 
     G2Element gen = G2Element::Generator();
     return pk + gen * nonce;

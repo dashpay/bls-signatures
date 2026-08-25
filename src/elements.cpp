@@ -418,10 +418,9 @@ G1Element operator+(const G1Element& a, const G1Element& b)
 G1Element operator*(const G1Element& a, const blst_scalar& k)
 {
     G1Element ans;
-    byte* bte = util::SecAlloc<byte>(32);
-    blst_lendian_from_scalar(bte, &k);
-    blst_p1_mult(&(ans.p), &(a.p), bte, 256);
-    util::SecFree(bte, 32);
+    util::SecVector<byte> bte(32);
+    blst_lendian_from_scalar(bte.data(), &k);
+    blst_p1_mult(&(ans.p), &(a.p), bte.data(), 256);
 
     return ans;
 }
@@ -661,10 +660,9 @@ G2Element operator+(const G2Element& a, const G2Element& b)
 G2Element operator*(const G2Element& a, const blst_scalar& k)
 {
     G2Element ans;
-    byte* bte = util::SecAlloc<byte>(32);
-    blst_lendian_from_scalar(bte, &k);
-    blst_p2_mult(&(ans.q), &(a.q), bte, 256);
-    util::SecFree(bte, 32);
+    util::SecVector<byte> bte(32);
+    blst_lendian_from_scalar(bte.data(), &k);
+    blst_p2_mult(&(ans.q), &(a.q), bte.data(), 256);
 
     return ans;
 }

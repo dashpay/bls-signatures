@@ -15,6 +15,7 @@
 #include <limits>
 #include <new>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -170,5 +171,42 @@ TEST_CASE("A private key has value semantics and clears itself")
 
         REQUIRE(std::all_of(g_arena, g_arena + sizeof(blst_scalar),
                             [](uint8_t b) { return b == 0; }));
+    }
+}
+
+TEST_CASE("util::SecVector allocates through the secure allocator")
+{
+    static_assert(std::is_same<bls::util::SecVector<uint32_t>::allocator_type,
+                               bls::util::SecureAllocator<uint32_t>>::value,
+                  "SecVector has to carry the secure allocator");
+
+    // Growth reallocates, so this walks allocate and deallocate rather than
+    // only the one reservation a sized construction would make.
+    bls::util::SecVector<uint32_t> words;
+    for (uint32_t i = 0; i < 64; ++i) {
+        words.push_back(i);
+    }
+
+    REQUIRE(words.size() == 64);
+    REQUIRE(words.front() == 0);
+    REQUIRE(words.back() == 63);
+}
+
+TEST_CASE("Secure release clears the bytes before handing them back")
+{
+    SECTION("util::SecVector, through the allocator")
+    {
+        std::memset(g_arena, 0xcd, sizeof(g_arena));
+        {
+            ArenaGuard guard;
+            bls::util::SecVector<uint8_t> secret(64);
+            std::fill(secret.begin(), secret.end(), 0xab);
+        }
+        REQUIRE(std::none_of(g_arena, g_arena + 64, [](uint8_t b) {
+            return b == 0xab;
+        }));
+        REQUIRE(std::all_of(g_arena, g_arena + 64, [](uint8_t b) {
+            return b == 0;
+        }));
     }
 }
