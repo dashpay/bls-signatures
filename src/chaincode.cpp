@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "bls.hpp"
+#include "secure.h"
 
 #include <cstring>
 
@@ -28,6 +29,16 @@ ChainCode ChainCode::FromBytes(const Bytes& bytes) {
 }
 
 ChainCode::ChainCode(const ChainCode &cc) : chainCode(cc.chainCode) {}
+
+ChainCode& ChainCode::operator=(const ChainCode &cc) {
+    // Every byte is overwritten, so nothing of the old value survives.
+    chainCode = cc.chainCode;
+    return *this;
+}
+
+ChainCode::~ChainCode() {
+    util::SecureWipe(chainCode.data(), chainCode.size());
+}
 
 // Comparator implementation.
 bool operator==(ChainCode const &a,  ChainCode const &b) {

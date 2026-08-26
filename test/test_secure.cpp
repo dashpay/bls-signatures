@@ -226,3 +226,46 @@ TEST_CASE("Secure release clears the bytes before handing them back")
         REQUIRE(g_arena[16 * sizeof(uint32_t)] == 0xcd);
     }
 }
+
+TEST_CASE("A chain code has value semantics and clears itself")
+{
+    const std::vector<uint8_t> vecA(bls::ChainCode::SIZE, 0xa7);
+    const std::vector<uint8_t> vecB(bls::ChainCode::SIZE, 0x3c);
+
+    SECTION("Copy and assignment carry the value")
+    {
+        const bls::ChainCode a = bls::ChainCode::FromBytes(bls::Bytes(vecA));
+        const bls::ChainCode copied = a;
+        REQUIRE(copied == a);
+
+        bls::ChainCode assigned = bls::ChainCode::FromBytes(bls::Bytes(vecB));
+        assigned = a;
+        REQUIRE(assigned == a);
+
+        // Self-assignment must not lose the value.
+        bls::ChainCode& alias = assigned;
+        assigned = alias;
+        REQUIRE(assigned == a);
+    }
+
+    SECTION("Destruction leaves nothing behind")
+    {
+        std::memset(g_arena, 0xcd, sizeof(g_arena));
+        {
+            ArenaGuard guard;
+            // The chain code lands in the arena, so what the destructor does
+            // to it stays readable once the scope ends.
+            auto* pHeld = static_cast<bls::ChainCode*>(
+                bls::util::SecMalloc(sizeof(bls::ChainCode)));
+            new (pHeld)
+                bls::ChainCode(bls::ChainCode::FromBytes(bls::Bytes(vecA)));
+            REQUIRE(std::any_of(g_arena, g_arena + sizeof(bls::ChainCode),
+                                [](uint8_t b) { return b != 0 && b != 0xcd; }));
+            pHeld->~ChainCode();
+
+            REQUIRE(std::all_of(g_arena, g_arena + sizeof(bls::ChainCode),
+                                [](uint8_t b) { return b == 0; }));
+            bls::util::SecFree(pHeld, sizeof(bls::ChainCode));
+        }
+    }
+}
