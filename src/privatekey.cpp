@@ -120,6 +120,9 @@ PrivateKey &PrivateKey::operator=(const PrivateKey &other)
 {
     CheckKeyData();
     other.CheckKeyData();
+    if (this == &other) {
+        return *this;
+    }
     InvalidateCaches();
     memcpy(keydata, other.keydata, sizeof(blst_scalar));
     return *this;
@@ -127,6 +130,9 @@ PrivateKey &PrivateKey::operator=(const PrivateKey &other)
 
 PrivateKey &PrivateKey::operator=(PrivateKey &&other)
 {
+    if (this == &other) {
+        return *this;
+    }
     DeallocateKeyData();
     keydata = std::exchange(other.keydata, nullptr);
     other.InvalidateCaches();

@@ -16,6 +16,7 @@
 #include <new>
 #include <thread>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -171,6 +172,50 @@ TEST_CASE("A private key has value semantics and clears itself")
 
         REQUIRE(std::all_of(g_arena, g_arena + sizeof(blst_scalar),
                             [](uint8_t b) { return b == 0; }));
+    }
+
+    SECTION("Copy and assignment carry the value")
+    {
+        std::vector<uint8_t> vecWide(bls::PrivateKey::PRIVATE_KEY_SIZE, 0x5b);
+        vecWide[0] = 0x0f;
+
+        bls::PrivateKey sk = bls::PrivateKey::FromBytes(bls::Bytes(vecWide));
+        const bls::PrivateKey copied = sk;
+        REQUIRE(copied == sk);
+
+        // Self-assignment must not disturb the value it is about to read.
+        bls::PrivateKey& alias = sk;
+        sk = alias;
+        REQUIRE(sk.Serialize() == vecWide);
+
+        // Nor may self-move release the key out from under itself.
+        sk = std::move(alias);
+        REQUIRE(sk.HasKeyData());
+        REQUIRE(sk.Serialize() == vecWide);
+    }
+
+    SECTION("Assignment clears the value it replaces")
+    {
+        std::vector<uint8_t> vecWide(bls::PrivateKey::PRIVATE_KEY_SIZE, 0x5b);
+        vecWide[0] = 0x0f;
+        std::vector<uint8_t> vecNarrow(bls::PrivateKey::PRIVATE_KEY_SIZE, 0x00);
+        vecNarrow[bls::PrivateKey::PRIVATE_KEY_SIZE - 1] = 0x01;
+
+        std::memset(g_arena, 0xcd, sizeof(g_arena));
+        {
+            ArenaGuard guard;
+            bls::PrivateKey wide =
+                bls::PrivateKey::FromBytes(bls::Bytes(vecWide));
+            const bls::PrivateKey narrow =
+                bls::PrivateKey::FromBytes(bls::Bytes(vecNarrow));
+            wide = narrow;
+
+            REQUIRE(wide.Serialize() == vecNarrow);
+            // 0x5b was only ever a byte of the wide value, so finding it now
+            // would mean the assignment left some of it behind.
+            REQUIRE(std::none_of(g_arena, g_arena + sizeof(blst_scalar),
+                                 [](uint8_t b) { return b == 0x5b; }));
+        }
     }
 }
 
