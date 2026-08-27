@@ -1,0 +1,6 @@
+*          text=auto  eol=lf
+*.mk       text       whitespace=-tab-in-indent,trailing-space,tabwidth=4
+Makefile*  text       whitespace=-tab-in-indent,trailing-space,tabwidth=4
+
+# Vendored dependencies are not subject to normalization.
+depends/** -text

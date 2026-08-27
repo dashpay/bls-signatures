@@ -287,7 +287,7 @@ build_relic_arch() {
 
 build_bls_arch() {
     # shellcheck disable=SC2039
-    BLS_FILES=( "bls" "chaincode" "elements" "extendedprivatekey" "extendedpublickey" "legacy" "privatekey" "schemes" "threshold" )
+    BLS_FILES=( "bls" "chaincode" "elements" "extendedprivatekey" "extendedpublickey" "hdkeys" "hkdf" "legacy" "privatekey" "schemes" "secure" "threshold" "util" "wipe" )
     # shellcheck disable=SC2039
     ALL_BLS_OBJ_FILES=$(printf "%s.o " "${BLS_FILES[@]}")
 
@@ -315,7 +315,7 @@ build_bls_arch() {
           -I"../relic-${PFX}/depends/relic/include" \
           -I"../../src/" \
           -I"../gmplib-${PFX}/include" \
-          -x c++ -std=c++14 -stdlib=libc++ -fembed-bitcode -arch "${ARCH}" -isysroot "${SDK}" "${EXTRA_ARGS}" \
+          -x c++ -std=c++17 -stdlib=libc++ -fembed-bitcode -arch "${ARCH}" -isysroot "${SDK}" "${EXTRA_ARGS}" \
           -c "../../src/${F}.cpp" -o "${F}.o"
     done
 

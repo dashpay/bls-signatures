@@ -14,15 +14,19 @@
 // limitations under the License.
 
 #define CATCH_CONFIG_RUNNER
-#include <thread>
 
 #include "bls.hpp"
+#include "secure.h"
+#include "test-utils.hpp"
+
 #include <catch2/catch.hpp>
+
+#include <thread>
 
 extern "C" {
 #include "relic.h"
 }
-#include "test-utils.hpp"
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -475,11 +479,11 @@ TEST_CASE("Error handling")
     {
         vector<uint8_t> seed(32, 0x10);
         PrivateKey sk1 = BasicSchemeMPL().KeyGen(seed);
-        uint8_t* skData = Util::SecAlloc<uint8_t>(G2Element::SIZE);
+        uint8_t* skData = util::SecAlloc<uint8_t>(G2Element::SIZE);
         sk1.Serialize(skData);
         skData[0] = 255;
         REQUIRE_THROWS(PrivateKey::FromBytes(Bytes(skData, PrivateKey::PRIVATE_KEY_SIZE)));
-        Util::SecFree(skData);
+        util::SecFree(skData, G2Element::SIZE);
     }
 
     SECTION("Should throw on a bad public key")
@@ -630,7 +634,7 @@ TEST_CASE("Signature tests")
         PrivateKey sk1 = BasicSchemeMPL().KeyGen(seed);
         G1Element pk1 = sk1.GetG1Element();
 
-        uint8_t* skData = Util::SecAlloc<uint8_t>(G2Element::SIZE);
+        uint8_t* skData = util::SecAlloc<uint8_t>(G2Element::SIZE);
         sk1.Serialize(skData);
         PrivateKey sk2 = PrivateKey::FromBytes(Bytes(skData, PrivateKey::PRIVATE_KEY_SIZE));
         REQUIRE(sk1 == sk2);
@@ -648,7 +652,7 @@ TEST_CASE("Signature tests")
         REQUIRE(sig1 == sig2);
 
         REQUIRE(BasicSchemeMPL().Verify(pk2, message1, sig2));
-        Util::SecFree(skData);
+        util::SecFree(skData, G2Element::SIZE);
     }
 
     SECTION("Should not verify aggregate with same message under BasicScheme")

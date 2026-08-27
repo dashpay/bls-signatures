@@ -21,15 +21,25 @@ import (
 	"unsafe"
 )
 
+func secAllocFailed() string {
+	return "dashbls: secure allocation failed: " + C.GoString(C.GetLastErrorMsg())
+}
+
 func cAllocBytes(data []byte) unsafe.Pointer {
 	l := C.size_t(len(data))
 	ptr := unsafe.Pointer(C.SecAllocBytes(l))
+	if ptr == nil {
+		panic(secAllocFailed())
+	}
 	C.memcpy(ptr, unsafe.Pointer(&data[0]), l)
 	return ptr
 }
 
 func cAllocSigs(sigs ...*G2Element) *unsafe.Pointer {
 	arr := C.AllocPtrArray(C.size_t(len(sigs)))
+	if arr == nil {
+		panic(secAllocFailed())
+	}
 	for i, pk := range sigs {
 		C.SetPtrArray(arr, unsafe.Pointer(pk.val), C.int(i))
 	}
@@ -38,6 +48,9 @@ func cAllocSigs(sigs ...*G2Element) *unsafe.Pointer {
 
 func cAllocPrivKeys(sks ...*PrivateKey) *unsafe.Pointer {
 	arr := C.AllocPtrArray(C.size_t(len(sks)))
+	if arr == nil {
+		panic(secAllocFailed())
+	}
 	for i, sk := range sks {
 		C.SetPtrArray(arr, unsafe.Pointer(sk.val), C.int(i))
 	}
@@ -47,6 +60,9 @@ func cAllocPrivKeys(sks ...*PrivateKey) *unsafe.Pointer {
 func cAllocMsgs(msgs [][]byte) (*unsafe.Pointer, []int) {
 	msgLens := make([]int, len(msgs))
 	cMsgArrPtr := C.AllocPtrArray(C.size_t(len(msgs)))
+	if cMsgArrPtr == nil {
+		panic(secAllocFailed())
+	}
 	for i, msg := range msgs {
 		cMsgPtr := C.CBytes(msg)
 		C.SetPtrArray(cMsgArrPtr, unsafe.Pointer(cMsgPtr), C.int(i))

@@ -7,7 +7,7 @@
 #include "threshold.hpp"
 
 #include "schemes.hpp"
-#include "bn_helpers.hpp"
+#include "secure.h"
 
 static std::unique_ptr<bls::CoreMPL> pThresholdScheme(new bls::LegacySchemeMPL);
 
@@ -174,13 +174,13 @@ namespace bls {
             throw std::length_error("At least 2 coefficients required");
         }
 
-        BnGuard x;
-        bn_read_bin(x.val, id.begin(), Poly::nIdSize);
-        ops.ModOrder(x.val);
+        util::Bn x;
+        bn_read_bin(x, id.begin(), Poly::nIdSize);
+        ops.ModOrder(x);
 
         BLSType y = vecIn.back();
         for (int i = (int) vecIn.size() - 2; i >= 0; i--) {
-            y = ops.Mul(y, x.val);
+            y = ops.Mul(y, x);
             y = ops.Add(y, vecIn[i]);
         }
 
@@ -205,35 +205,35 @@ namespace bls {
         */
         const size_t k = vec.size();
 
-        BnArrayGuard delta(k);
-        BnArrayGuard ids2(k);
+        std::vector<util::Bn> delta(k);
+        std::vector<util::Bn> ids2(k);
 
         for (size_t i = 0; i < k; i++) {
             bn_read_bin(ids2[i], ids[i].begin(), Poly::nIdSize);
             ops.ModOrder(ids2[i]);
         }
 
-        BnGuard a, b, v;
+        util::Bn a, b, v;
 
-        bn_copy(a.val, ids2[0]);
+        bn_copy(a, ids2[0]);
         for (size_t i = 1; i < k; i++) {
-            ops.MulFP(a.val, a.val, ids2[i]);
+            ops.MulFP(a, a, ids2[i]);
         }
-        if (bn_is_zero(a.val)) {
+        if (bn_is_zero(a)) {
             throw std::invalid_argument("Zero id");
         }
         for (size_t i = 0; i < k; i++) {
-            bn_copy(b.val, ids2[i]);
+            bn_copy(b, ids2[i]);
             for (size_t j = 0; j < k; j++) {
                 if (j != i) {
-                    ops.SubFP(v.val, ids2[j], ids2[i]);
-                    if (bn_is_zero(v.val)) {
+                    ops.SubFP(v, ids2[j], ids2[i]);
+                    if (bn_is_zero(v)) {
                         throw std::invalid_argument("Duplicate id");
                     }
-                    ops.MulFP(b.val, b.val, v.val);
+                    ops.MulFP(b, b, v);
                 }
             }
-            ops.DivFP(delta[i], a.val, b.val);
+            ops.DivFP(delta[i], a, b);
         }
 
         /*
