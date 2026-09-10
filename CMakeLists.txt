@@ -24,6 +24,7 @@ set(BUILD_BLS_JS_BINDINGS "1" CACHE STRING "")
 set(BUILD_BLS_PYTHON_BINDINGS "1" CACHE STRING "")
 set(BUILD_BLS_TESTS "1" CACHE STRING "")
 set(BUILD_BLS_BENCHMARKS "1" CACHE STRING "")
+set(BUILD_SODIUM "0" CACHE STRING "")
 
 message(STATUS "Build python bindings: ${BUILD_BLS_PYTHON_BINDINGS}")
 message(STATUS "Build tests: ${BUILD_BLS_TESTS}")
@@ -45,6 +46,7 @@ add_subdirectory(depends/mimalloc)
 
 include(FetchContent)
 
+if(BUILD_SODIUM)
 FetchContent_Declare(Sodium
   GIT_REPOSITORY https://github.com/AmineKhaldi/libsodium-cmake.git
 
@@ -56,6 +58,7 @@ set(SODIUM_PCH "on" CACHE STRING "")
 set(SODIUM_DISABLE_TESTS "on" CACHE STRING "")
 set(SODIUM_CHIA_MINIMAL "on" CACHE STRING "")
 FetchContent_MakeAvailable(Sodium)
+endif()
 
 set(BLST_GIT_TAG "a8cd361c9f671577aeab3f074098443af92a53fc")
 set(BLST_REPOSITORY "https://github.com/supranational/blst")
