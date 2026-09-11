@@ -153,22 +153,28 @@ bool CoreMPL::Verify(
     const Bytes& message,
     const G2Element& signature)
 {
-    blst_p1_affine pubkeyAffine;
-    blst_p2_affine sigAffine;
+    // Keep the relic-era semantics rather than blst_core_verify: elements are
+    // gated by IsValid() (which accepts infinity) and the check is the product
+    // of pairings, so e.g. an infinity pubkey with an infinity signature
+    // verifies as it always did.
+    const G2Element hashedPoint = G2Element::FromMessage(message, (const uint8_t*)strCiphersuiteId.c_str(), strCiphersuiteId.length());
 
-    pubkey.ToAffine(&pubkeyAffine);
-    signature.ToAffine(&sigAffine);
+    if (!pubkey.IsValid()) {
+        return false;
+    }
+    if (!signature.IsValid()) {
+        return false;
+    }
 
-    auto err = blst_core_verify_pk_in_g1(
-        &pubkeyAffine,
-        &sigAffine,
-        true, /*hash*/
-        message.begin(),
-        message.size(),
-        (const uint8_t*)strCiphersuiteId.c_str(),
-        strCiphersuiteId.length());
+    std::array<blst_p1_affine, 2> g1s;
+    std::array<blst_p2_affine, 2> g2s;
 
-    return err == BLST_SUCCESS;
+    G1Element::Generator().Negate().ToAffine(&g1s[0]);
+    pubkey.ToAffine(&g1s[1]);
+    signature.ToAffine(&g2s[0]);
+    hashedPoint.ToAffine(&g2s[1]);
+
+    return CoreMPL::NativeVerify(g1s.data(), g2s.data(), 2);
 }
 
 std::array<uint8_t, G2Element::SIZE> CoreMPL::Aggregate(const vector<vector<uint8_t>> &signatures)
@@ -332,37 +338,23 @@ bool CoreMPL::AggregateVerify(
         return arg_check;
     }
 
-    blst_pairing* ctx = (blst_pairing*)malloc(blst_pairing_sizeof());
-    blst_pairing_init(
-        ctx,
-        true /*hash*/,
-        (const uint8_t*)strCiphersuiteId.c_str(),
-        strCiphersuiteId.length());
+    std::vector<blst_p1_affine> vecG1(nPubKeys + 1);
+    std::vector<blst_p2_affine> vecG2(nPubKeys + 1);
+    G1Element::Generator().Negate().ToAffine(&vecG1[0]);
+    if (!signature.IsValid()) {
+        return false;
+    }
+    signature.ToAffine(&vecG2[0]);
 
-    blst_p1_affine pk_affine;
-    blst_p2_affine sig_affine;
-    blst_fp12 gtsig;
-
-    signature.ToAffine(&sig_affine);
-
-    blst_aggregated_in_g2(&gtsig, &sig_affine);
-
-    for (size_t i = 0; i < nPubKeys; i++) {
-        pubkeys[i].ToAffine(&pk_affine);
-
-        auto err = blst_pairing_aggregate_pk_in_g1(
-            ctx, &pk_affine, nullptr, messages[i].begin(), messages[i].size());
-
-        if (err != BLST_SUCCESS) {
-            free(ctx);
+    for (size_t i = 0; i < nPubKeys; ++i) {
+        if (!pubkeys[i].IsValid()) {
             return false;
         }
+        pubkeys[i].ToAffine(&vecG1[i + 1]);
+        G2Element::FromMessage(messages[i], (const uint8_t*)strCiphersuiteId.c_str(), strCiphersuiteId.length()).ToAffine(&vecG2[i + 1]);
     }
 
-    blst_pairing_commit(ctx);
-    auto ret = blst_pairing_finalverify(ctx, &gtsig);
-    free(ctx);
-    return ret;
+    return CoreMPL::NativeVerify(vecG1.data(), vecG2.data(), nPubKeys + 1);
 }
 
 bool CoreMPL::NativeVerify(const blst_p1_affine* pubkeys,
