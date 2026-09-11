@@ -30,25 +30,24 @@ PrivateKey PrivateKey::FromSeedBIP32(const Bytes& seed) {
         PrivateKey::PRIVATE_KEY_SIZE);
 
     // Hash the seed into sk
-    md_hmac(hash, seed.begin(), (int)seed.size(), hmacKey, sizeof(hmacKey));
-
-    bn_t order;
-    bn_new(order);
-    g1_get_ord(order);
+    Util::md_hmac(hash, seed.begin(), (int)seed.size(), hmacKey, sizeof(hmacKey));
 
     // Make sure private key is less than the curve order
-    bn_t* skBn = Util::SecAlloc<bn_t>(1);
-    bn_new(*skBn);
-    bn_read_bin(*skBn, hash, PrivateKey::PRIVATE_KEY_SIZE);
-    bn_mod_basic(*skBn, *skBn, order);
-
     PrivateKey k;
-    bn_copy(k.keydata, *skBn);
+    blst_scalar_from_be_bytes(k.keydata, hash, PrivateKey::PRIVATE_KEY_SIZE);
 
-    Util::SecFree(skBn);
     Util::SecFree(hash);
     return k;
 }
+
+// BLS12-381 group order r, big-endian.
+// Taken from depends/blst/src/consts.c: BLS12_381_r = { 0xffffffff00000001, 0x53bda402fffe5bfe, 0x3339d80809a1d805, 0x73eda753299d7d48 }
+//     (little-endian limbs of the same number, with the comment z^4 - z^2 + 1, group order).
+
+static const uint8_t ORDER_BE[32] = {
+    0x73, 0xed, 0xa7, 0x53, 0x29, 0x9d, 0x7d, 0x48, 0x33, 0x39, 0xd8, 0x08,
+    0x09, 0xa1, 0xd8, 0x05, 0x53, 0xbd, 0xa4, 0x02, 0xff, 0xfe, 0x5b, 0xfe,
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01};
 
 // Construct a private key from a bytearray.
 PrivateKey PrivateKey::FromBytes(const Bytes &bytes, bool modOrder)
@@ -61,18 +60,16 @@ PrivateKey PrivateKey::FromBytes(const Bytes &bytes, bool modOrder)
     if (modOrder)
         // this allows any bytes to be input and does proper mod order
         blst_scalar_from_be_bytes(k.keydata, bytes.begin(), bytes.size());
-    else
-        // this should only be the output of deserialization
+    else {
+        // Values strictly greater than the group order are rejected; the
+        // order itself is accepted, matching the relic-based
+        // implementation's bn_cmp(keydata, order) > 0 check.
+        if (memcmp(bytes.begin(), ORDER_BE, PRIVATE_KEY_SIZE) > 0) {
+            throw std::invalid_argument(
+                "PrivateKey byte data must be less than the group order");
+        }
         blst_scalar_from_bendian(k.keydata, bytes.begin());
-
-    if (Util::HasOnlyZeros(bytes)) {
-        return k;  // don't check anything else, we allow zero private key
     }
-
-    if (!blst_sk_check(k.keydata))
-        throw std::invalid_argument(
-            "PrivateKey byte data must be less than the group order");
-
     return k;
 }
 
@@ -91,7 +88,7 @@ PrivateKey::PrivateKey(const PrivateKey &privateKey)
 {
     privateKey.CheckKeyData();
     AllocateKeyData();
-    memcpy(keydata, privateKey.keydata, 32);
+    memcpy(keydata, privateKey.keydata, sizeof(blst_scalar));
 }
 
 PrivateKey::PrivateKey(PrivateKey &&k)
@@ -122,7 +119,7 @@ PrivateKey &PrivateKey::operator=(const PrivateKey &other)
     CheckKeyData();
     other.CheckKeyData();
     InvalidateCaches();
-    memcpy(keydata, other.keydata, 32);
+    memcpy(keydata, other.keydata, sizeof(blst_scalar));
     return *this;
 }
 
@@ -200,20 +197,15 @@ G2Element operator*(const G2Element &a, const PrivateKey &k)
 
 G2Element operator*(const PrivateKey &k, const G2Element &a) { return a * k; }
 
-PrivateKey operator*(const PrivateKey& k, const bn_t& a)
+PrivateKey operator*(const PrivateKey& k, const blst_scalar& a)
 {
     k.CheckKeyData();
-    bn_t order;
-    bn_new(order);
-    g2_get_ord(order);
-
     PrivateKey ret;
-    bn_mul_comba(ret.keydata, k.keydata, a);
-    bn_mod_basic(ret.keydata, ret.keydata, order);
+    blst_sk_mul_n_check(ret.keydata, k.keydata, &a);
     return ret;
 }
 
-PrivateKey operator*(const bn_t& a, const PrivateKey& k) { return a * k; }
+PrivateKey operator*(const blst_scalar& a, const PrivateKey& k) { return k * a; }
 
 G2Element PrivateKey::GetG2Power(const G2Element &element) const
 {
@@ -250,7 +242,7 @@ bool PrivateKey::IsZero() const
     blst_scalar zro;
     memset(&zro, 0x00, sizeof(blst_scalar));
 
-    return memcmp(keydata, &zro, 32) == 0;
+    return memcmp(keydata, &zro, sizeof(blst_scalar)) == 0;
 }
 
 bool operator==(const PrivateKey &a, const PrivateKey &b)
@@ -296,13 +288,13 @@ G2Element PrivateKey::SignG2(
 
     blst_p2 *pt = Util::SecAlloc<blst_p2>(1);
     if (fLegacy) {
+        // The relic implementation always mapped exactly
+        // BLS::MESSAGE_HASH_LEN bytes regardless of len.
         ep2_map_legacy(pt, msg, BLS::MESSAGE_HASH_LEN);
-        g2_mul(pt, pt, keydata);
-        static_assert(false); // not implemented TODO
     } else {
         blst_hash_to_g2(pt, msg, len, dst, dst_len, nullptr, 0);
-        blst_sign_pk_in_g1(pt, pt, keydata);
     }
+    blst_sign_pk_in_g1(pt, pt, keydata);
     G2Element ret = G2Element::FromNative(*pt);
     Util::SecFree(pt);
     return ret;

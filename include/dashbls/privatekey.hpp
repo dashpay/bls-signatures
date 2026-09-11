@@ -67,8 +67,8 @@ class PrivateKey {
     friend G2Element operator*(const G2Element &a, const PrivateKey &k);
     friend G2Element operator*(const PrivateKey &k, const G2Element &a);
 
-    friend PrivateKey operator*(const PrivateKey& a, const bn_t& k);
-    friend PrivateKey operator*(const bn_t& k, const PrivateKey& a);
+    friend PrivateKey operator*(const PrivateKey& a, const blst_scalar& k);
+    friend PrivateKey operator*(const blst_scalar& k, const PrivateKey& a);
 
     // Serialize the key into bytes
     void Serialize(uint8_t *buffer) const;
