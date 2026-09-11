@@ -171,7 +171,7 @@ G1Element operator*(const G1Element &a, const PrivateKey &k)
     blst_p1 *ans = Util::SecAlloc<blst_p1>(1);
     a.ToNative(ans);
     byte *bte = Util::SecAlloc<byte>(32);
-    blst_bendian_from_scalar(bte, k.keydata);
+    blst_lendian_from_scalar(bte, k.keydata);
     blst_p1_mult(ans, ans, bte, 256);
     G1Element ret = G1Element::FromNative(*ans);
     Util::SecFree(ans);
@@ -187,7 +187,7 @@ G2Element operator*(const G2Element &a, const PrivateKey &k)
     blst_p2 *ans = Util::SecAlloc<blst_p2>(1);
     a.ToNative(ans);
     byte *bte = Util::SecAlloc<byte>(32);
-    blst_bendian_from_scalar(bte, k.keydata);
+    blst_lendian_from_scalar(bte, k.keydata);
     blst_p2_mult(ans, ans, bte, 256);
     G2Element ret = G2Element::FromNative(*ans);
     Util::SecFree(ans);
@@ -213,7 +213,7 @@ G2Element PrivateKey::GetG2Power(const G2Element &element) const
     blst_p2 *q = Util::SecAlloc<blst_p2>(1);
     element.ToNative(q);
     byte *bte = Util::SecAlloc<byte>(32);
-    blst_bendian_from_scalar(bte, keydata);
+    blst_lendian_from_scalar(bte, keydata);
     blst_p2_mult(q, q, bte, 255);
     const G2Element ret = G2Element::FromNative(*q);
     Util::SecFree(q);
