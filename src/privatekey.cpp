@@ -14,6 +14,8 @@
 
 #include <string.h>
 
+#include <algorithm>
+
 #include "bls.hpp"
 #include "legacy.hpp"
 
@@ -260,7 +262,11 @@ void PrivateKey::Serialize(uint8_t *buffer) const
         throw std::runtime_error("PrivateKey::Serialize buffer invalid");
     }
     CheckKeyData();
-    blst_bendian_from_scalar(buffer, keydata);
+    // blst_bendian_from_scalar converts through a temporary limb vector and
+    // securely wipes it, which costs more than the serialization itself;
+    // the scalar's native bytes are little-endian, so copy and reverse.
+    blst_lendian_from_scalar(buffer, keydata);
+    std::reverse(buffer, buffer + PRIVATE_KEY_SIZE);
 }
 
 std::vector<uint8_t> PrivateKey::Serialize() const
