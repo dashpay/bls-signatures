@@ -21,18 +21,56 @@
 #include "elements.hpp"
 #include "schemes.hpp"
 #include "hdkeys.hpp"
-#include "bn_helpers.hpp"
 
 using std::string;
 using std::vector;
 
 namespace bls {
 
+namespace {
+
+// RAII wrapper for bn_t arrays that owns both the heap allocation and
+// the per-element bn_new/bn_free lifecycle.  Tracks how many elements
+// were successfully initialised so the destructor is safe even if
+// bn_new throws partway through.
+class BNArray {
+public:
+    explicit BNArray(size_t size)
+        : data_(size ? new bn_t[size] : nullptr), size_(size), initialized_(0)
+    {
+        for (size_t i = 0; i < size_; ++i) {
+            bn_new(data_[i]);
+            ++initialized_;
+        }
+    }
+
+    ~BNArray() {
+        for (size_t i = 0; i < initialized_; ++i) {
+            bn_free(data_[i]);
+        }
+        delete[] data_;
+    }
+
+    BNArray(const BNArray&) = delete;
+    BNArray& operator=(const BNArray&) = delete;
+
+    bn_t& operator[](size_t i) { return data_[i]; }
+    bn_t* data() { return data_; }
+
+private:
+    bn_t* data_;
+    size_t size_;
+    size_t initialized_;
+};
+
+}  // namespace
+
 template <typename GetBytesFn>
 static void HashPubKeys(bn_t* computedTs, size_t nPubKeys, GetBytesFn getBytes)
 {
-    BnGuard order;
-    g2_get_ord(order.val);
+    bn_t order;
+    bn_new(order);
+    g2_get_ord(order);
 
     std::vector<uint8_t> vecBuffer(nPubKeys * G1Element::SIZE);
 
@@ -54,8 +92,9 @@ static void HashPubKeys(bn_t* computedTs, size_t nPubKeys, GetBytesFn getBytes)
         Util::Hash256(hash, buffer, 4 + 32);
 
         bn_read_bin(computedTs[i], hash, 32);
-        bn_mod_basic(computedTs[i], computedTs[i], order.val);
+        bn_mod_basic(computedTs[i], computedTs[i], order);
     }
+    bn_free(order);
 }
 
 enum InvariantResult { BAD=false, GOOD=true, CONTINUE };
@@ -199,7 +238,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         throw std::invalid_argument("LegacySchemeMPL::AggregateSigs sigs.size() != pubKeys.size()");
     }
 
-    BnArrayGuard computedTs(vecPublicKeys.size());
+    BNArray computedTs(vecPublicKeys.size());
     std::vector<std::pair<std::array<uint8_t, G1Element::SIZE>, const G2Element*>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         vecSorted[i] = std::make_pair(vecPublicKeys[i].SerializeToArray(fLegacy), &vecSignatures[i]);
@@ -208,7 +247,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         return std::memcmp(a.first.data(), b.first.data(), G1Element::SIZE) < 0;
     });
 
-    HashPubKeys(computedTs.data, vecSorted.size(),
+    HashPubKeys(computedTs.data(), vecSorted.size(),
                 [&](size_t i) { return vecSorted[i].first.data(); });
 
     // Raise all signatures to power of the corresponding t's and aggregate the results into aggSig
@@ -232,7 +271,7 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const G2Element& signature,
                            const Bytes& message,
                            const bool fLegacy) {
-    BnArrayGuard computedTs(vecPublicKeys.size());
+    BNArray computedTs(vecPublicKeys.size());
     std::vector<std::array<uint8_t, G1Element::SIZE>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         vecSorted[i] = vecPublicKeys[i].SerializeToArray(fLegacy);
@@ -241,7 +280,7 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
         return std::memcmp(a.data(), b.data(), G1Element::SIZE) < 0;
     });
 
-    HashPubKeys(computedTs.data, vecSorted.size(),
+    HashPubKeys(computedTs.data(), vecSorted.size(),
                 [&](size_t i) { return vecSorted[i].data(); });
 
     G1Element publicKey;

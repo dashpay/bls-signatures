@@ -1245,8 +1245,7 @@ TEST_CASE("Schemes") {
             legacySigs.push_back(legacyScheme.Sign(sk, message));
         }
 
-        G2Element legacySecureAggSig;
-        REQUIRE_NOTHROW(legacySecureAggSig = legacyScheme.AggregateSecure(legacyPks, legacySigs, message));
+        G2Element legacySecureAggSig = legacyScheme.AggregateSecure(legacyPks, legacySigs, message);
         REQUIRE(legacyScheme.VerifySecure(legacyPks, legacySecureAggSig, message));
     }
 
