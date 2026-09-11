@@ -261,14 +261,14 @@ void PrivateKey::Serialize(uint8_t *buffer) const
     bn_write_bin(buffer, PrivateKey::PRIVATE_KEY_SIZE, keydata);
 }
 
-std::vector<uint8_t> PrivateKey::Serialize(const bool fLegacy) const
+std::vector<uint8_t> PrivateKey::Serialize() const
 {
     std::vector<uint8_t> data(PRIVATE_KEY_SIZE);
     Serialize(data.data());
     return data;
 }
 
-std::array<uint8_t, PrivateKey::PRIVATE_KEY_SIZE> PrivateKey::SerializeToArray(bool fLegacy) const
+std::array<uint8_t, PrivateKey::PRIVATE_KEY_SIZE> PrivateKey::SerializeToArray() const
 {
     std::array<uint8_t, PRIVATE_KEY_SIZE> data{};
     Serialize(data.data());

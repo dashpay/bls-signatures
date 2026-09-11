@@ -126,13 +126,15 @@ TEST_CASE("class PrivateKey") {
         uint8_t aliceSeed[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
         PrivateKey pk1 = PrivateKey::FromSeedBIP32(Bytes(aliceSeed, 10));
         REQUIRE(pk1.HasKeyData());
-        vector<uint8_t> privateKey = pk1.Serialize(true);
+        vector<uint8_t> privateKey = pk1.Serialize();
         vector<uint8_t> knownPrivateKey = Util::HexToBytes("46891c2cec49593c81921e473db7480029e0fc1eb933c6b93d81f5370eb19fbd");
         REQUIRE(privateKey == knownPrivateKey);
         G1Element pubKey1 = pk1.GetG1Element();
         vector<uint8_t> pubKey1Bytes = pubKey1.Serialize(true);
+        vector<uint8_t> pubKey2Bytes = pubKey1.Serialize(false);
         vector<uint8_t> knownPublicKey = Util::HexToBytes("1790635de8740e9a6a6b15fb6b72f3a16afa0973d971979b6ba54761d6e2502c50db76f4d26143f05459a42cfd520d44");
         REQUIRE(pubKey1Bytes == knownPublicKey);
+        REQUIRE(pubKey2Bytes != pubKey1Bytes);
     }
     SECTION("keydata checks") {
         PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
