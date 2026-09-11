@@ -30,51 +30,9 @@ using std::vector;
 
 namespace bls {
 
-namespace {
-
-// RAII wrapper for bn_t arrays that owns both the heap allocation and
-// the per-element bn_new/bn_free lifecycle.  Tracks how many elements
-// were successfully initialised so the destructor is safe even if
-// bn_new throws partway through.
-class BNArray {
-public:
-    explicit BNArray(size_t size)
-        : data_(size ? new bn_t[size] : nullptr), size_(size), initialized_(0)
-    {
-        for (size_t i = 0; i < size_; ++i) {
-            bn_new(data_[i]);
-            ++initialized_;
-        }
-    }
-
-    ~BNArray() {
-        for (size_t i = 0; i < initialized_; ++i) {
-            bn_free(data_[i]);
-        }
-        delete[] data_;
-    }
-
-    BNArray(const BNArray&) = delete;
-    BNArray& operator=(const BNArray&) = delete;
-
-    bn_t& operator[](size_t i) { return data_[i]; }
-    bn_t* data() { return data_; }
-
-private:
-    bn_t* data_;
-    size_t size_;
-    size_t initialized_;
-};
-
-}  // namespace
-
 template <typename GetBytesFn>
-static void HashPubKeys(bn_t* computedTs, size_t nPubKeys, GetBytesFn getBytes)
+static void HashPubKeys(blst_scalar* computedTs, size_t nPubKeys, GetBytesFn getBytes)
 {
-    bn_t order;
-    bn_new(order);
-    g2_get_ord(order);
-
     std::vector<uint8_t> vecBuffer(nPubKeys * G1Element::SIZE);
 
     for (size_t i = 0; i < nPubKeys; i++) {
@@ -94,10 +52,10 @@ static void HashPubKeys(bn_t* computedTs, size_t nPubKeys, GetBytesFn getBytes)
         std::memcpy(buffer + 4, pkHash, 32);
         Util::Hash256(hash, buffer, 4 + 32);
 
-        bn_read_bin(computedTs[i], hash, 32);
-        bn_mod_basic(computedTs[i], computedTs[i], order);
+        // reduces the hash mod the group order, like the former
+        // bn_read_bin + bn_mod
+        blst_scalar_from_be_bytes(&computedTs[i], hash, 32);
     }
-    bn_free(order);
 }
 
 enum InvariantResult { BAD = false, GOOD = true, CONTINUE };
@@ -259,7 +217,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         throw std::invalid_argument("LegacySchemeMPL::AggregateSigs sigs.size() != pubKeys.size()");
     }
 
-    BNArray computedTs(vecPublicKeys.size());
+    std::vector<blst_scalar> computedTs(vecPublicKeys.size());
     std::vector<std::pair<std::array<uint8_t, G1Element::SIZE>, const G2Element*>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         vecSorted[i] = std::make_pair(vecPublicKeys[i].SerializeToArray(fLegacy), &vecSignatures[i]);
@@ -292,7 +250,7 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const G2Element& signature,
                            const Bytes& message,
                            const bool fLegacy) {
-    BNArray computedTs(vecPublicKeys.size());
+    std::vector<blst_scalar> computedTs(vecPublicKeys.size());
     std::vector<std::array<uint8_t, G1Element::SIZE>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         vecSorted[i] = vecPublicKeys[i].SerializeToArray(fLegacy);
@@ -405,6 +363,29 @@ bool CoreMPL::AggregateVerify(
     auto ret = blst_pairing_finalverify(ctx, &gtsig);
     free(ctx);
     return ret;
+}
+
+bool CoreMPL::NativeVerify(const blst_p1_affine* pubkeys,
+                           const blst_p2_affine* mappedHashes,
+                           size_t length)
+{
+    // 1 =? prod e(pubkey[i], hash[i])
+    // A pairing with the point at infinity on either side contributes the
+    // identity, matching relic's pc_map_sim.
+    blst_fp12 candidate = *blst_fp12_one();
+
+    for (size_t i = 0; i < length; ++i) {
+        if (blst_p1_affine_is_inf(&pubkeys[i]) ||
+            blst_p2_affine_is_inf(&mappedHashes[i])) {
+            continue;
+        }
+        blst_fp12 tmpPairing;
+        blst_miller_loop(&tmpPairing, &mappedHashes[i], &pubkeys[i]);
+        blst_fp12_mul(&candidate, &candidate, &tmpPairing);
+    }
+
+    blst_final_exp(&candidate, &candidate);
+    return blst_fp12_is_one(&candidate);
 }
 
 PrivateKey CoreMPL::DeriveChildSk(const PrivateKey& sk, uint32_t index)
@@ -651,7 +632,7 @@ bool AugSchemeMPL::AggregateVerify(
 
 G2Element PopSchemeMPL::PopProve(const PrivateKey& seckey)
 {
-    std::array<uint8_t, G1Element::SIZE>> pubkey_bytes = seckey.GetG1Element().SerializeToArray();
+    std::array<uint8_t, G1Element::SIZE> pubkey_bytes = seckey.GetG1Element().SerializeToArray();
 
     return seckey.SignG2(
         pubkey_bytes.data(),
@@ -669,7 +650,7 @@ bool PopSchemeMPL::PopVerify(
 
     pubkey.ToAffine(&pubkeyAffine);
     signature_proof.ToAffine(&sigAffine);
-    std::array<uint8_t, G1Element::SIZE> pubkey_bytes = pubkey.Serialize();
+    std::array<uint8_t, G1Element::SIZE> pubkey_bytes = pubkey.SerializeToArray();
 
     auto err = blst_core_verify_pk_in_g1(
         &pubkeyAffine,
@@ -754,13 +735,13 @@ G2Element LegacySchemeMPL::Sign(const PrivateKey& seckey, const Bytes& message)
 
 bool LegacySchemeMPL::Verify(const G1Element &pubkey, const Bytes& message, const G2Element &signature)
 {
-    g1_t g1s[2];
-    g2_t g2s[2];
+    blst_p1_affine g1s[2];
+    blst_p2_affine g2s[2];
 
-    G1Element::Generator().Negate().ToNative(g1s[0]);
-    pubkey.ToNative(g1s[1]);
-    signature.ToNative(g2s[0]);
-    G2Element::FromMessage(message, nullptr, 0, true).ToNative(g2s[1]);
+    G1Element::Generator().Negate().ToAffine(&g1s[0]);
+    pubkey.ToAffine(&g1s[1]);
+    signature.ToAffine(&g2s[0]);
+    G2Element::FromMessage(message, nullptr, 0, true).ToAffine(&g2s[1]);
 
     return CoreMPL::NativeVerify(g1s, g2s, 2);
 }
@@ -785,17 +766,17 @@ bool LegacySchemeMPL::AggregateVerify(const vector<G1Element> &pubkeys,
     const auto arg_check = VerifyAggregateSignatureArguments(nPubKeys, messages.size(), signature);
     if (arg_check != CONTINUE) return arg_check;
 
-    std::vector<g1_st> vecG1(nPubKeys + 1);
-    std::vector<g2_st> vecG2(nPubKeys + 1);
-    G1Element::Generator().Negate().ToNative(&vecG1[0]);
-    signature.ToNative(&vecG2[0]);
+    std::vector<blst_p1_affine> vecG1(nPubKeys + 1);
+    std::vector<blst_p2_affine> vecG2(nPubKeys + 1);
+    G1Element::Generator().Negate().ToAffine(&vecG1[0]);
+    signature.ToAffine(&vecG2[0]);
 
     for (size_t i = 0; i < nPubKeys; ++i) {
-        pubkeys[i].ToNative(&vecG1[i + 1]);
-        G2Element::FromMessage(messages[i], nullptr, 0, true).ToNative(&vecG2[i + 1]);
+        pubkeys[i].ToAffine(&vecG1[i + 1]);
+        G2Element::FromMessage(messages[i], nullptr, 0, true).ToAffine(&vecG2[i + 1]);
     }
 
-    return CoreMPL::NativeVerify((g1_t*)vecG1.data(), (g2_t*)vecG2.data(), nPubKeys + 1);
+    return CoreMPL::NativeVerify(vecG1.data(), vecG2.data(), nPubKeys + 1);
 }
 
 }  // end namespace bls
