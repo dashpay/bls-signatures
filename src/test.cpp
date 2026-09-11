@@ -129,21 +129,28 @@ TEST_CASE("class PrivateKey")
             Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE + 1), true));
         REQUIRE_NOTHROW(PrivateKey::FromBytes(
             Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true));
-        // blst_scalar order;
-        // memcpy(&order, BLS12_381_r, sizeof(blst_scalar));
-        //  g1_get_ord(order);
-        //  bn_write_bin(buffer, PrivateKey::PRIVATE_KEY_SIZE, order);
-        // REQUIRE_NOTHROW(PrivateKey::FromBytes(
-        //     Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), false));
-        // REQUIRE_NOTHROW(PrivateKey::FromBytes(
-        //     Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true));
-        // blst_sk_add_n_check(&order, &order, &order);
-        //  bn_add(order, order, order);
-        //  bn_write_bin(buffer, PrivateKey::PRIVATE_KEY_SIZE, order);
-        // REQUIRE_THROWS(PrivateKey::FromBytes(
-        //     Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), false));
-        // REQUIRE_NOTHROW(PrivateKey::FromBytes(
-        //    Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true));
+        // the group order r itself is accepted (bn_cmp > 0 semantics)
+        const vector<uint8_t> order = Util::HexToBytes(
+            "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001");
+        memcpy(buffer, order.data(), PrivateKey::PRIVATE_KEY_SIZE);
+        REQUIRE_NOTHROW(PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), false));
+        REQUIRE_NOTHROW(PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true));
+        // 2 * r is above the order and must be rejected without modOrder
+        const vector<uint8_t> order2 = Util::HexToBytes(
+            "e7db4ea6533afa906673b0101343b00aa77b4805fffcb7fdfffffffe00000002");
+        memcpy(buffer, order2.data(), PrivateKey::PRIVATE_KEY_SIZE);
+        REQUIRE_THROWS(PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), false));
+        REQUIRE_NOTHROW(PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true));
+        // The hardcoded order must agree with blst's own, which is only
+        // reachable through blst_scalar_fr_check (true iff below r): r itself
+        // is not a valid Fr element, r - 1 is.
+        blst_scalar s;
+        blst_scalar_from_bendian(&s, order.data());
+        REQUIRE(!blst_scalar_fr_check(&s));
+        vector<uint8_t> orderm1 = order;
+        orderm1[31] = 0x00;
+        blst_scalar_from_bendian(&s, orderm1.data());
+        REQUIRE(blst_scalar_fr_check(&s));
     }
     SECTION("BIP32 Seed") {
         uint8_t aliceSeed[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
