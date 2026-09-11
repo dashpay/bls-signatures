@@ -169,7 +169,9 @@ public:
         Util::Hash256(digest, buf, G1Element::SIZE + 4);
 
         blst_scalar nonce;
-        blst_scalar_from_lendian(&nonce, digest);
+        // The digest is big-endian; upstream chia loaded it as little-endian,
+        // which only worked because operator* reversed the bytes again.
+        blst_scalar_from_bendian(&nonce, digest);
 
         Util::SecFree(buf);
         Util::SecFree(digest);
@@ -190,7 +192,9 @@ public:
         Util::Hash256(digest, buf, G2Element::SIZE + 4);
 
         blst_scalar nonce;
-        blst_scalar_from_lendian(&nonce, digest);
+        // The digest is big-endian; upstream chia loaded it as little-endian,
+        // which only worked because operator* reversed the bytes again.
+        blst_scalar_from_bendian(&nonce, digest);
 
         Util::SecFree(buf);
         Util::SecFree(digest);
