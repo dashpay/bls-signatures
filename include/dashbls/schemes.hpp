@@ -111,8 +111,9 @@ public:
 
 protected:
     const std::string& strCiphersuiteId;
-    // bool NativeVerify(blst_p1 *pubKeys, blst_p2 *mappedHashes, size_t
-    // length);
+    static bool NativeVerify(const blst_p1_affine* pubKeys,
+                             const blst_p2_affine* mappedHashes,
+                             size_t length);
     G2Element AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
                               std::vector<G2Element> const &vecSignatures,
                               const Bytes& message,
