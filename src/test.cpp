@@ -23,6 +23,11 @@ extern "C" {
 #include "relic.h"
 }
 #include "test-utils.hpp"
+#include "test-vectors.hpp"
+
+#include <cstdlib>
+#include <fstream>
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -1618,6 +1623,58 @@ TEST_CASE("CheckValid for Legacy")
                 REQUIRE_THROWS(sig.CheckValid());
             }
         }
+    }
+}
+
+// Locates test-vectors/reference.txt: an environment variable overrides
+// the path the build system compiled in; source-tree-relative paths cover
+// running the binary by hand.
+static std::string ReferenceVectorsPath()
+{
+    std::vector<std::string> candidates;
+    if (const char* env = std::getenv("DASHBLS_REFERENCE_VECTORS")) {
+        candidates.push_back(env);
+    }
+#ifdef DASHBLS_REFERENCE_VECTORS
+    candidates.push_back(DASHBLS_REFERENCE_VECTORS);
+#endif
+    candidates.push_back("test-vectors/reference.txt");
+    candidates.push_back("../test-vectors/reference.txt");
+    candidates.push_back("../../test-vectors/reference.txt");
+    for (const auto& c : candidates) {
+        if (std::ifstream(c).good()) return c;
+    }
+    std::string tried;
+    for (const auto& c : candidates) tried += "\n  " + c;
+    FAIL("reference vectors not found; tried:" << tried);
+    return "";
+}
+
+TEST_CASE("Reference vectors")
+{
+    // Every consensus-visible behavior of the library, compared line by line
+    // against the output of the relic-based implementation.
+    const std::string path = ReferenceVectorsPath();
+    INFO("reference file: " << path);
+
+    std::vector<std::string> expected;
+    std::ifstream in(path);
+    for (std::string line; std::getline(in, line);) {
+        if (line.empty() || line[0] == '#') continue;
+        expected.push_back(line);
+    }
+    REQUIRE(expected.size() > 300);
+
+    std::vector<std::string> actual;
+    for (const auto& line : bls_test_vectors::GenerateReferenceVectors()) {
+        if (line.empty() || line[0] == '#') continue;
+        actual.push_back(line);
+    }
+
+    REQUIRE(actual.size() == expected.size());
+    for (size_t i = 0; i < expected.size(); i++) {
+        INFO("vector " << i + 1 << " of " << expected.size());
+        REQUIRE(actual[i] == expected[i]);
     }
 }
 

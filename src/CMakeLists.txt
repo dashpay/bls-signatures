@@ -66,3 +66,14 @@ if(BUILD_BLS_BENCHMARKS)
     endif()
   endif()
 endif()
+
+if(BUILD_BLS_TESTS)
+  # runtest compares the library against test-vectors/reference.txt;
+  # vectorgen regenerates that file from whichever library it is built against.
+  target_compile_definitions(runtest PRIVATE
+    DASHBLS_REFERENCE_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/../test-vectors/reference.txt")
+
+  add_executable(vectorgen ${CMAKE_CURRENT_SOURCE_DIR}/../tools/vectorgen.cpp)
+  target_include_directories(vectorgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(vectorgen PRIVATE dashbls)
+endif()
