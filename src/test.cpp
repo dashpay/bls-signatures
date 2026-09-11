@@ -58,8 +58,8 @@ TEST_CASE("class PrivateKey") {
     uint8_t buffer[PrivateKey::PRIVATE_KEY_SIZE];
     memcpy(buffer, getRandomSeed().data(), PrivateKey::PRIVATE_KEY_SIZE);
     SECTION("Copy {constructor|assignment operator}") {
-        PrivateKey pk1 = PrivateKey::RandomPrivateKey();
-        PrivateKey pk2 = PrivateKey::RandomPrivateKey();
+        PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
+        PrivateKey pk2 = PrivateKey::FromByteVector(getRandomSeed(), true);
         PrivateKey pk3 = PrivateKey(pk2);
         REQUIRE(!pk1.IsZero());
         REQUIRE(!pk2.IsZero());
@@ -75,9 +75,9 @@ TEST_CASE("class PrivateKey") {
         REQUIRE(pk3 != pk2);
     }
     SECTION("Move {constructor|assignment operator}") {
-        PrivateKey pk1 = PrivateKey::RandomPrivateKey();
+        PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
         std::vector<uint8_t> vec1 = pk1.Serialize();
-        PrivateKey pk2 = PrivateKey::RandomPrivateKey();
+        PrivateKey pk2 = PrivateKey::FromByteVector(getRandomSeed(), true);
         std::vector<uint8_t> vec2 = pk2.Serialize();
         PrivateKey pk3 = PrivateKey(std::move(pk2));
         REQUIRE(!pk1.IsZero());
@@ -95,15 +95,15 @@ TEST_CASE("class PrivateKey") {
         REQUIRE_THROWS(pk3.IsZero());
     }
     SECTION("Equality operators") {
-        PrivateKey pk1 = PrivateKey::RandomPrivateKey();
-        PrivateKey pk2 = PrivateKey::RandomPrivateKey();
+        PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
+        PrivateKey pk2 = PrivateKey::FromByteVector(getRandomSeed(), true);
         PrivateKey pk3 = pk2;
         REQUIRE(pk1 != pk2);
         REQUIRE(pk1 != pk3);
         REQUIRE(pk2 == pk3);
     }
     SECTION("(De)Serialization") {
-        PrivateKey pk1 = PrivateKey::RandomPrivateKey();
+        PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
         pk1.Serialize(buffer);
         REQUIRE(memcmp(buffer, pk1.Serialize().data(), PrivateKey::PRIVATE_KEY_SIZE) == 0);
         PrivateKey pk2 = PrivateKey::FromBytes(Bytes(buffer, PrivateKey::PRIVATE_KEY_SIZE), true);
@@ -135,7 +135,7 @@ TEST_CASE("class PrivateKey") {
         REQUIRE(pubKey1Bytes == knownPublicKey);
     }
     SECTION("keydata checks") {
-        PrivateKey pk1 = PrivateKey::RandomPrivateKey();
+        PrivateKey pk1 = PrivateKey::FromByteVector(getRandomSeed(), true);
         G1Element g1 = pk1.GetG1Element();
         G2Element g2 = pk1.GetG2Element();
         PrivateKey pk2 = std::move(pk1);

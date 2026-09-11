@@ -34,9 +34,6 @@ class PrivateKey {
     // Construct a private key from a BIP32 based seed.
     static PrivateKey FromSeedBIP32(const Bytes& seed);
 
-    // Construct a random private key.
-    static PrivateKey RandomPrivateKey();
-
     // Construct a private key from a bytearray.
     static PrivateKey FromBytes(const Bytes& bytes, bool modOrder = false);
 
