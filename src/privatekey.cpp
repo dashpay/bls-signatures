@@ -30,7 +30,7 @@ PrivateKey PrivateKey::FromSeedBIP32(const Bytes& seed) {
         PrivateKey::PRIVATE_KEY_SIZE);
 
     // Hash the seed into sk
-    Util::md_hmac(hash, seed.begin(), (int)seed.size(), hmacKey, sizeof(hmacKey));
+    Util::md_hmac(hash, seed.begin(), seed.size(), hmacKey, sizeof(hmacKey));
 
     // Make sure private key is less than the curve order
     PrivateKey k;
