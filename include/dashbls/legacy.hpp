@@ -6,7 +6,7 @@
 #define SRC_LEGACY_HPP_
 
 extern "C" {
-#include "bindings/blst.h"
+#include "blst.h"
 }
 
 #include <cstdint>
