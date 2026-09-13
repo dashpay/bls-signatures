@@ -24,7 +24,7 @@
 #include <array>
 
 extern "C" {
-#include "bindings/blst.h"
+#include "blst.h"
 }
 
 namespace bls {

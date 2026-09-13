@@ -16,7 +16,7 @@
 #define SRC_BLSELEMENTS_HPP_
 
 extern "C" {
-#include "bindings/blst.h"
+#include "blst.h"
 }
 #include <utility>
 

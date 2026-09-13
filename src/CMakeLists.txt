@@ -45,7 +45,7 @@ else()
 endif()
 
 add_library(dashbls ${bls_sources})
-target_include_directories(dashbls PUBLIC ${blst_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include/dashbls/)
+target_include_directories(dashbls PUBLIC ${blst_SOURCE_DIR}/bindings ${PROJECT_SOURCE_DIR}/include/dashbls/)
 target_compile_definitions(dashbls PRIVATE __BLST_PORTABLE__ BLSALLOC_MIMALLOC=1)
 target_link_libraries(dashbls
   PUBLIC
