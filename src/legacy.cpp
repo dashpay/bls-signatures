@@ -4,6 +4,8 @@
 
 #include "legacy.hpp"
 
+#include <mutex>
+
 #define B12_P381_S3 "BE32CE5FBEED9CA374D38C0ED41EEFD5BB675277CDF12D11BC2FB026C41400045C03FFFFFFFDFFFD"
 #define B12_P381_S32 "5F19672FDF76CE51BA69C6076A0F77EADDB3A93BE6F89688DE17D813620A00022E01FFFFFFFEFFFE"
 
@@ -13,13 +15,12 @@
  * @param[out] h			- the returned cofactor.
  */
 static void ep2_curve_get_s32(bn_t s32In) {
-    static bool fInitialized{false};
+    static std::once_flag is_initialized;
     static bn_t s32;
-    if (!fInitialized) {
+    std::call_once(is_initialized, [] {
         bn_new(s32);
         bn_read_str(s32, B12_P381_S32, sizeof(B12_P381_S32), 16);
-        fInitialized = true;
-    }
+    });
     bn_copy(s32In, s32);
 }
 
@@ -29,13 +30,12 @@ static void ep2_curve_get_s32(bn_t s32In) {
  * @param[out] h			- the returned cofactor.
  */
 static void ep2_curve_get_s3(bn_t s3In) {
-    static bool fInitialized{false};
+    static std::once_flag is_initialized;
     static bn_t s3;
-    if (!fInitialized) {
+    std::call_once(is_initialized, [] {
         bn_new(s3);
         bn_read_str(s3, B12_P381_S3, sizeof(B12_P381_S3), 16);
-        fInitialized = true;
-    }
+    });
     bn_copy(s3In, s3);
 }
 
