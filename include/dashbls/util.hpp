@@ -72,12 +72,14 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
     size_t key_len) {
     constexpr size_t block_size = 64;
     constexpr size_t md_len = 32;
-    uint8_t opad[block_size + md_len];
-    uint8_t *ipad = (uint8_t *)malloc(block_size + in_len);
-    uint8_t _key[block_size];
-
-    if (ipad == NULL)
+    // The pads and the padded key are derived from the key, so they live in
+    // the same secure memory as the private keys (see SecAlloc).
+    uint8_t *buf = SecAlloc<uint8_t>(block_size + md_len + block_size + in_len + block_size);
+    if (buf == NULL)
         throw std::runtime_error("out of memory");
+    uint8_t *opad = buf;                          // block_size + md_len
+    uint8_t *ipad = opad + block_size + md_len;   // block_size + in_len
+    uint8_t *_key = ipad + block_size + in_len;   // block_size
 
     if (key_len > block_size) {
         Hash256(_key, key, key_len);
@@ -97,7 +99,7 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
     Hash256(opad + block_size, ipad, block_size + in_len);
     Hash256(mac, opad, block_size + md_len);
 
-    free(ipad);
+    SecFree(buf);
 }
 
     static std::string HexStr(const uint8_t* data, size_t len) {
