@@ -13,7 +13,7 @@ the [`blst library`](https://github.com/supranational/blst.git) toolkit with bin
 ## Dependencies
 
 * A C++17 capable compiler (GCC 9, Clang 7 or higher)
-* CMake 3.18 or higher (or Autoconf 2.71 or higher; with libtool and automake)
+* CMake 3.18 or higher
 
 Additionally, the following dependencies are supplied by the codebase
 
