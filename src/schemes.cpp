@@ -645,23 +645,24 @@ bool PopSchemeMPL::PopVerify(
     const G1Element& pubkey,
     const G2Element& signature_proof)
 {
-    blst_p1_affine pubkeyAffine;
-    blst_p2_affine sigAffine;
-
-    pubkey.ToAffine(&pubkeyAffine);
-    signature_proof.ToAffine(&sigAffine);
-    std::array<uint8_t, G1Element::SIZE> pubkey_bytes = pubkey.SerializeToArray();
-
-    auto err = blst_core_verify_pk_in_g1(
-        &pubkeyAffine,
-        &sigAffine,
-        true, /*hash*/
-        pubkey_bytes.data(),
-        pubkey_bytes.size(),
-        (const uint8_t*)POP_CIPHERSUITE_ID.c_str(),
-        POP_CIPHERSUITE_ID.length());
-
-    return err == BLST_SUCCESS;
+    // Same semantics as CoreMPL::Verify (and the relic implementation): the
+    // elements are gated by IsValid(), which accepts infinity, and the check
+    // is the product of pairings rather than blst_core_verify.
+    const std::array<uint8_t, G1Element::SIZE> pubkey_bytes = pubkey.SerializeToArray();
+    const G2Element hashedPoint = G2Element::FromMessage(Bytes(pubkey_bytes), (const uint8_t*)POP_CIPHERSUITE_ID.c_str(), POP_CIPHERSUITE_ID.length());
+    if (!pubkey.IsValid()) {
+        return false;
+    }
+    if (!signature_proof.IsValid()) {
+        return false;
+    }
+    std::array<blst_p1_affine, 2> g1s;
+    std::array<blst_p2_affine, 2> g2s;
+    G1Element::Generator().Negate().ToAffine(&g1s[0]);
+    pubkey.ToAffine(&g1s[1]);
+    signature_proof.ToAffine(&g2s[0]);
+    hashedPoint.ToAffine(&g2s[1]);
+    return CoreMPL::NativeVerify(g1s.data(), g2s.data(), 2);
 }
 
 bool PopSchemeMPL::PopVerify(
