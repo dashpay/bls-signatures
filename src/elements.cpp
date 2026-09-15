@@ -535,7 +535,7 @@ G2Element G2Element::FromMessage(
 {
     G2Element ans;
     if (fLegacy) {
-        ep2_map_legacy(&(ans.q), message.begin(), BLS::MESSAGE_HASH_LEN);
+        ep2_map_legacy(&(ans.q), message.begin(), static_cast<int>(message.size()));
     } else {
         const byte* aug = nullptr;
         size_t aug_len = 0;

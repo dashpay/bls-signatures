@@ -291,12 +291,13 @@ G2Element PrivateKey::SignG2(
     const bool fLegacy) const
 {
     CheckKeyData();
+    if (fLegacy && len != BLS::MESSAGE_HASH_LEN) {
+        throw std::invalid_argument("legacy signing requires a 32-byte message hash");
+    }
 
     blst_p2 *pt = Util::SecAlloc<blst_p2>(1);
     if (fLegacy) {
-        // The relic implementation always mapped exactly
-        // BLS::MESSAGE_HASH_LEN bytes regardless of len.
-        ep2_map_legacy(pt, msg, BLS::MESSAGE_HASH_LEN);
+        ep2_map_legacy(pt, msg, static_cast<int>(len));
     } else {
         blst_hash_to_g2(pt, msg, len, dst, dst_len, nullptr, 0);
     }
