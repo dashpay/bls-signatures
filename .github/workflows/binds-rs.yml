@@ -42,3 +42,5 @@ jobs:
       run: |
         cd rust-bindings/bls-dash-sys
         cargo test
+        cd ../bls-signatures
+        cargo test

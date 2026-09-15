@@ -1538,9 +1538,11 @@ TEST_CASE("Legacy HD keys") {
                 .GetPublicKey();
         REQUIRE(sk3.GetG1Element() == pk4);
 
-        G2Element sig = LegacySchemeMPL().Sign(sk3, Bytes(seed));
+        // the legacy scheme signs 32-byte message hashes
+        std::vector<uint8_t> hash(32, 0x42);
+        G2Element sig = LegacySchemeMPL().Sign(sk3, Bytes(hash));
 
-        REQUIRE(LegacySchemeMPL().Verify(sk3.GetG1Element(), Bytes(seed), sig));
+        REQUIRE(LegacySchemeMPL().Verify(sk3.GetG1Element(), Bytes(hash), sig));
     }
 
     SECTION("Should prevent hardened pk derivation") {
@@ -1572,7 +1574,8 @@ TEST_CASE("Legacy HD keys") {
         cout << epk.GetPublicKey() << endl;
         cout << epk.GetChainCode() << endl;
 
-        G2Element sig1 = LegacySchemeMPL().Sign(esk.GetPrivateKey(), Bytes(seed));
+        std::vector<uint8_t> hash(32, 0x42);
+        G2Element sig1 = LegacySchemeMPL().Sign(esk.GetPrivateKey(), Bytes(hash));
         cout << sig1 << endl;
     }
 
@@ -2123,6 +2126,18 @@ TEST_CASE("Degenerate legacy signatures do not verify")
         std::vector<Bytes> msgs{Bytes(h), Bytes(h)};
         REQUIRE(!LegacySchemeMPL().AggregateVerify(pks, msgs, bad));
     }
+}
+
+TEST_CASE("Legacy verification rejects messages that are not 32 bytes")
+{
+    PrivateKey sk = BasicSchemeMPL().KeyGen(std::vector<uint8_t>(32, 0x55));
+    std::vector<uint8_t> h(32, 0x11);
+    G2Element sig = LegacySchemeMPL().Sign(sk, Bytes(h));
+    REQUIRE(LegacySchemeMPL().Verify(sk.GetG1Element(), Bytes(h), sig));
+    std::vector<uint8_t> h31(31, 0x11), h33(33, 0x11);
+    REQUIRE(!LegacySchemeMPL().Verify(sk.GetG1Element(), Bytes(h31), sig));
+    REQUIRE(!LegacySchemeMPL().Verify(sk.GetG1Element(), Bytes(h33), sig));
+    REQUIRE_THROWS(LegacySchemeMPL().Sign(sk, Bytes(h31)));
 }
 
 TEST_CASE("CheckValid for Legacy")
