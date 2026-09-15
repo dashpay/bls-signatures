@@ -2096,6 +2096,28 @@ TEST_CASE("IsValid rejects points off the curve")
     REQUIRE(!G2Element::FromNative(off2).IsValid());
 }
 
+TEST_CASE("Degenerate legacy signatures do not verify")
+{
+    // A legacy G2 decode of x = (0, 0) with no square root leaves the point
+    // (0, 0, 1): not infinity, but (0, 0) in affine form. IsValid() rejects
+    // it before the pairing product.
+    std::vector<uint8_t> h(32, 0x11);
+    G1Element g = G1Element::Generator();
+    std::vector<uint8_t> pp(96, 0);  // c0 = p, c1 = p, both read as zero
+    const std::vector<uint8_t> p = Util::HexToBytes(
+        "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab");
+    std::copy(p.begin(), p.end(), pp.begin());
+    std::copy(p.begin(), p.end(), pp.begin() + 48);
+    for (const std::vector<uint8_t>& in : {std::vector<uint8_t>(96, 0), pp}) {
+        G2Element bad = G2Element::FromBytes(Bytes(in), true);
+        REQUIRE(!LegacySchemeMPL().Verify(G1Element(), Bytes(h), bad));
+        REQUIRE(!LegacySchemeMPL().Verify(g, Bytes(h), bad));
+        std::vector<G1Element> pks{g, g.Negate()};
+        std::vector<Bytes> msgs{Bytes(h), Bytes(h)};
+        REQUIRE(!LegacySchemeMPL().AggregateVerify(pks, msgs, bad));
+    }
+}
+
 TEST_CASE("CheckValid for Legacy")
 {
     SECTION("Invalid G1 points should throw in CheckValid but not in FromBytes")
