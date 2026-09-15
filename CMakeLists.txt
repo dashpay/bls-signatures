@@ -82,14 +82,7 @@ endif()
 
 file(APPEND "${CMAKE_CURRENT_LIST_DIR}/build/include_paths.txt" "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES};")
 
-if(GMP_INCLUDES)
-  file(APPEND "${CMAKE_CURRENT_LIST_DIR}/build/include_paths.txt" "${GMP_INCLUDES};")
-endif()
-
-# Write gmp library path for rust binding
-if(GMP_LIBRARIES)
-  file(APPEND "${CMAKE_CURRENT_LIST_DIR}/build/gmp_libraries.txt" "${GMP_LIBRARIES}")
-endif()
+file(APPEND "${CMAKE_CURRENT_LIST_DIR}/build/include_paths.txt" "${blst_SOURCE_DIR}/bindings;")
 
 if(EMSCRIPTEN)
   if(BUILD_BLS_JS_BINDINGS)
