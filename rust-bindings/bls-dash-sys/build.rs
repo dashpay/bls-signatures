@@ -398,13 +398,7 @@ fn main() {
     cc.compile("dashbls");
 
     println!("cargo:rustc-link-search={}", target_path.display());
-    println!("cargo:rustc-link-lib=static=gmp");
-    //println!("cargo:rustc-link-lib=c++");
-    //println!("cargo:rustc-link-lib=c");
-    //println!("cargo:rustc-link-lib=static=sodium");
-    println!("cargo:rustc-link-lib=static=relic_s");
-    println!("cargo:rustc-link-lib=static=bls");
-    println!("cargo:rustc-link-search={}", bls_dash_src_path.display());
+    println!("cargo:rustc-link-lib=static=mimalloc-secure");
     println!("cargo:rustc-link-lib=static=dashbls");
     println!("cargo:rerun-if-changed={}", bls_dash_src_path.display());
 }
