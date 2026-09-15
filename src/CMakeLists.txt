@@ -97,4 +97,9 @@ if(BUILD_BLS_TESTS)
   add_executable(vectorgen ${CMAKE_CURRENT_SOURCE_DIR}/../tools/vectorgen.cpp)
   target_include_directories(vectorgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(vectorgen PRIVATE dashbls)
+
+  if(EMSCRIPTEN)
+    # mimalloc's Emscripten backend is built on emmalloc
+    target_link_options(vectorgen PRIVATE "SHELL:-s MALLOC=emmalloc")
+  endif()
 endif()
