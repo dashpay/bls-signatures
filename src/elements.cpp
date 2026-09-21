@@ -725,9 +725,7 @@ GTElement GTElement::FromAffine(const blst_p2_affine& affine)
 
 GTElement GTElement::Unity()
 {
-    GTElement ele = GTElement();
-    ele.FromNative(blst_fp12_one());
-    return ele;
+    return GTElement::FromNative(blst_fp12_one());
 }
 
 bool operator==(GTElement const& a, GTElement const& b)
