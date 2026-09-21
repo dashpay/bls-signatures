@@ -1712,10 +1712,10 @@ TEST_CASE("CheckValid")
         blst_p2 point_native;
         memset(&point_native, 0, sizeof(blst_p2));
 
-        // copy some probably invalid data into the point
-        memcpy(&(point_native.x), (void*)memcpy, sizeof(point_native.x));
-        memcpy(&(point_native.y), (void*)memset, sizeof(point_native.y));
-        memcpy(&(point_native.z), (void*)printf, sizeof(point_native.z));
+        // fixed garbage coordinates: not on the curve and not infinity
+        memset(&(point_native.x), 0x11, sizeof(point_native.x));
+        memset(&(point_native.y), 0x22, sizeof(point_native.y));
+        memset(&(point_native.z), 0x33, sizeof(point_native.z));
 
         G2Element point = G2Element::FromNative(point_native);
         REQUIRE(point.IsValid() == false);
@@ -1725,6 +1725,24 @@ TEST_CASE("CheckValid")
 
         REQUIRE_THROWS(G2Element::FromByteVector(badSer));
     }
+}
+
+TEST_CASE("Secure aggregation rejects an infinity public key")
+{
+    BasicSchemeMPL basic;
+    vector<uint8_t> seed1(32, 0x11);
+    vector<uint8_t> seed2(32, 0x22);
+    vector<uint8_t> msg(32, 0x33);
+    PrivateKey sk1 = basic.KeyGen(seed1);
+    PrivateKey sk2 = basic.KeyGen(seed2);
+    vector<G1Element> pks = {sk1.GetG1Element(), sk2.GetG1Element()};
+    vector<G2Element> sigs = {basic.Sign(sk1, msg), basic.Sign(sk2, msg)};
+
+    // positive control first, then only the second key changes
+    G2Element agg = basic.AggregateSecure(pks, sigs, Bytes(msg));
+    REQUIRE(basic.VerifySecure(pks, agg, Bytes(msg)));
+    pks[1] = G1Element();
+    REQUIRE(!basic.VerifySecure(pks, agg, Bytes(msg)));
 }
 
 TEST_CASE("CheckValid for Legacy")

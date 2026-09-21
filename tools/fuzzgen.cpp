@@ -9,6 +9,7 @@
 // consensus-facing attack surface), decode/re-encode round trips, and
 // legacy + basic sign/verify/aggregate cycles on derived keys.
 
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -79,7 +80,13 @@ int main(int argc, char** argv)
     }
     s0 = strtoull(argv[1], nullptr, 0) * 0x9E3779B97F4A7C15ULL + 1;
     s1 = s0 ^ 0xD1B54A32D192ED03ULL;
-    const long iters = strtol(argv[2], nullptr, 0);
+    char* end = nullptr;
+    errno = 0;
+    const long iters = strtol(argv[2], &end, 0);
+    if (errno != 0 || end == argv[2] || *end != '\0' || iters <= 0) {
+        fprintf(stderr, "fuzzgen: the iteration count must be a positive number\n");
+        return 2;
+    }
 
     LegacySchemeMPL legacy;
     BasicSchemeMPL basic;
