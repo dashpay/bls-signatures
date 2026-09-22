@@ -1,5 +1,5 @@
 AC_PREREQ([2.60])
-AC_INIT([libdashbls],[2.0])
+AC_INIT([libdashbls],[2.1])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 
