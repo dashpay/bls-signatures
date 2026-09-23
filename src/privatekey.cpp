@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
+
 #include "bls.hpp"
 #include "legacy.hpp"
 
@@ -307,6 +309,12 @@ G2Element PrivateKey::SignG2(
     if (fLegacy) {
         ep2_map_legacy(pt, msg, BLS::MESSAGE_HASH_LEN);
     } else {
+        // Both lengths narrow to int inside relic; a negative dst_len would
+        // also slip md_xmd's 255-byte check.
+        if (len > (size_t)std::numeric_limits<int>::max() ||
+            dst_len > (size_t)std::numeric_limits<int>::max()) {
+            throw std::invalid_argument("PrivateKey::SignG2: length exceeds INT_MAX");
+        }
         ep2_map_dst(pt, msg, len, dst, dst_len);
     }
     

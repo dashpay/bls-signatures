@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #define CATCH_CONFIG_RUNNER
+#include <limits>
 #include <thread>
 
 #include "bls.hpp"
@@ -1617,6 +1618,48 @@ TEST_CASE("CheckValid for Legacy")
                 REQUIRE_THROWS(sig.CheckValid());
             }
         }
+    }
+}
+
+TEST_CASE("Message length is rejected before it narrows to int")
+{
+    // relic takes these lengths as an int and md_xmd never checks the message
+    // length, so anything at or beyond 2 GiB would narrow negative and be
+    // widened back into an enormous read. The guards run before the pointer is
+    // touched, so an oversized Bytes can be described without allocating one.
+    const size_t nTooLong = (size_t)std::numeric_limits<int>::max() + 1;
+    const uint8_t dst[] = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";
+    uint8_t buf[1] = {0};
+
+    SECTION("G1Element::FromMessage")
+    {
+        REQUIRE_THROWS_AS(
+            G1Element::FromMessage(Bytes(buf, nTooLong), dst, sizeof(dst) - 1),
+            std::invalid_argument);
+    }
+
+    SECTION("G2Element::FromMessage")
+    {
+        REQUIRE_THROWS_AS(
+            G2Element::FromMessage(Bytes(buf, nTooLong), dst, sizeof(dst) - 1),
+            std::invalid_argument);
+    }
+
+    SECTION("PrivateKey::SignG2")
+    {
+        auto sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        REQUIRE_THROWS_AS(
+            sk.SignG2(buf, nTooLong, dst, sizeof(dst) - 1), std::invalid_argument);
+        // The tag length narrows the same way and would slip md_xmd's 255 check
+        REQUIRE_THROWS_AS(
+            sk.SignG2(buf, 1, dst, nTooLong), std::invalid_argument);
+    }
+
+    SECTION("Lengths within range are still accepted")
+    {
+        auto msg = getRandomSeed();
+        REQUIRE_NOTHROW(G1Element::FromMessage(Bytes(msg), dst, sizeof(dst) - 1));
+        REQUIRE_NOTHROW(G2Element::FromMessage(Bytes(msg), dst, sizeof(dst) - 1));
     }
 }
 
