@@ -66,3 +66,13 @@ if(BUILD_BLS_BENCHMARKS)
     endif()
   endif()
 endif()
+
+if(BUILD_BLS_TESTS)
+  # Test vector generator for VerifySecure compatibility testing
+  add_executable(test_verifysecure_vectors test_verifysecure_vectors.cpp)
+  target_link_libraries(test_verifysecure_vectors PRIVATE dashbls)
+
+  # Cross-compatibility test generator for true C++/Rust interoperability
+  add_executable(test_cross_compatibility test_cross_compatibility.cpp)
+  target_link_libraries(test_cross_compatibility PRIVATE dashbls)
+endif()
