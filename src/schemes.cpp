@@ -21,18 +21,17 @@
 #include "elements.hpp"
 #include "schemes.hpp"
 #include "hdkeys.hpp"
-#include "bn_helpers.hpp"
+#include "secure.h"
 
 using std::string;
 using std::vector;
 
 namespace bls {
-
 template <typename GetBytesFn>
-static void HashPubKeys(bn_t* computedTs, size_t nPubKeys, GetBytesFn getBytes)
+static void HashPubKeys(std::vector<util::Bn>& computedTs, size_t nPubKeys, GetBytesFn getBytes)
 {
-    BnGuard order;
-    g2_get_ord(order.val);
+    util::Bn order;
+    g2_get_ord(order);
 
     std::vector<uint8_t> vecBuffer(nPubKeys * G1Element::SIZE);
 
@@ -54,7 +53,7 @@ static void HashPubKeys(bn_t* computedTs, size_t nPubKeys, GetBytesFn getBytes)
         Util::Hash256(hash, buffer, 4 + 32);
 
         bn_read_bin(computedTs[i], hash, 32);
-        bn_mod_basic(computedTs[i], computedTs[i], order.val);
+        bn_mod_basic(computedTs[i], computedTs[i], order);
     }
 }
 
@@ -84,7 +83,7 @@ const std::string PopSchemeMPL::CIPHERSUITE_ID = "BLS_SIG_BLS12381G2_XMD:SHA-256
 const std::string PopSchemeMPL::POP_CIPHERSUITE_ID = "BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 
 PrivateKey CoreMPL::KeyGen(const vector<uint8_t>& seed) {
-    return HDKeys::KeyGen(seed);
+    return CoreMPL::KeyGen(Bytes(seed));
 }
 
 PrivateKey CoreMPL::KeyGen(const Bytes& seed) {
@@ -199,7 +198,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         throw std::invalid_argument("LegacySchemeMPL::AggregateSigs sigs.size() != pubKeys.size()");
     }
 
-    BnArrayGuard computedTs(vecPublicKeys.size());
+    std::vector<util::Bn> computedTs(vecPublicKeys.size());
     std::vector<std::pair<std::array<uint8_t, G1Element::SIZE>, const G2Element*>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         vecSorted[i] = std::make_pair(vecPublicKeys[i].SerializeToArray(fLegacy), &vecSignatures[i]);
@@ -208,7 +207,7 @@ G2Element CoreMPL::AggregateSecure(std::vector<G1Element> const &vecPublicKeys,
         return std::memcmp(a.first.data(), b.first.data(), G1Element::SIZE) < 0;
     });
 
-    HashPubKeys(computedTs.data, vecSorted.size(),
+    HashPubKeys(computedTs, vecSorted.size(),
                 [&](size_t i) { return vecSorted[i].first.data(); });
 
     // Raise all signatures to power of the corresponding t's and aggregate the results into aggSig
@@ -232,7 +231,7 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
                            const G2Element& signature,
                            const Bytes& message,
                            const bool fLegacy) {
-    BnArrayGuard computedTs(vecPublicKeys.size());
+    std::vector<util::Bn> computedTs(vecPublicKeys.size());
     std::vector<std::array<uint8_t, G1Element::SIZE>> vecSorted(vecPublicKeys.size());
     for (size_t i = 0; i < vecPublicKeys.size(); i++) {
         vecSorted[i] = vecPublicKeys[i].SerializeToArray(fLegacy);
@@ -241,7 +240,7 @@ bool CoreMPL::VerifySecure(const std::vector<G1Element>& vecPublicKeys,
         return std::memcmp(a.data(), b.data(), G1Element::SIZE) < 0;
     });
 
-    HashPubKeys(computedTs.data, vecSorted.size(),
+    HashPubKeys(computedTs, vecSorted.size(),
                 [&](size_t i) { return vecSorted[i].data(); });
 
     G1Element publicKey;
@@ -700,5 +699,4 @@ bool LegacySchemeMPL::AggregateVerify(const vector<G1Element> &pubkeys,
 
     return CoreMPL::NativeVerify((g1_t*)vecG1.data(), (g2_t*)vecG2.data(), nPubKeys + 1);
 }
-
 }  // end namespace bls

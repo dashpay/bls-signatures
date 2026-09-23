@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "bls.hpp"
+#include "secure.h"
 
 namespace bls {
 
@@ -20,17 +21,32 @@ ChainCode ChainCode::FromBytes(const Bytes& bytes) {
     if (bytes.size() != ChainCode::SIZE) {
         throw std::invalid_argument("ChainCode::FromBytes: Invalid size");
     }
-    ChainCode c = ChainCode();
-    bn_new(c.chainCode);
+    ChainCode c;
     bn_read_bin(c.chainCode, bytes.begin(), ChainCode::SIZE);
     return c;
 }
 
-ChainCode::ChainCode(const ChainCode &cc) {
-    uint8_t bytes[ChainCode::SIZE];
-    cc.Serialize(bytes);
+ChainCode::ChainCode() {
+    bn_null(chainCode);
     bn_new(chainCode);
-    bn_read_bin(chainCode, bytes, ChainCode::SIZE);
+    bn_zero(chainCode);
+}
+
+ChainCode::ChainCode(const ChainCode &cc) : ChainCode() {
+    bn_copy(chainCode, cc.chainCode);
+}
+
+ChainCode& ChainCode::operator=(const ChainCode &cc) {
+    if (this != &cc) {
+        util::SecureWipe(chainCode->dp, sizeof(chainCode->dp));
+        bn_copy(chainCode, cc.chainCode);
+    }
+    return *this;
+}
+
+ChainCode::~ChainCode() {
+    util::SecureWipe(chainCode, sizeof(bn_st));
+    bn_free(chainCode);
 }
 
 // Comparator implementation.

@@ -41,6 +41,8 @@ CGO_CXXFLAGS ?= "\
 -I$(CURR_DIR)../depends/mimalloc/include \
 -I$(CURR_DIR)../depends/relic/include \
 -I$(CURR_DIR)../include \
+-I$(CURR_DIR)../include/dashbls \
+-I$(CURR_DIR)../src \
 -I$(GMP_PREFIX)/include"
 
 CGO_LDFLAGS ?= "\

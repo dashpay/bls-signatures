@@ -3,15 +3,21 @@ source_group("SrcHeaders" FILES ${HEADERS})
 
 add_library(dashbls
   ${HEADERS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/privatekey.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bls.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/chaincode.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/elements.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/extendedprivatekey.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/extendedpublickey.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/hdkeys.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/hkdf.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/legacy.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/privatekey.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/schemes.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/threshold.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/secure.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/threshold.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wipe.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util.cpp
+)
 
 target_include_directories(dashbls
   PUBLIC
@@ -42,7 +48,9 @@ install(FILES $<TARGET_FILE:dashbls> DESTINATION lib)
 if(BUILD_BLS_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/../depends/catch2/CMakeLists.txt)
 
-  add_executable(runtest test.cpp)
+  add_executable(runtest
+    ${CMAKE_CURRENT_SOURCE_DIR}/test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_secure.cpp)
   target_link_libraries(runtest
                         PRIVATE dashbls
                         PRIVATE catch2)

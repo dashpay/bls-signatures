@@ -14,9 +14,9 @@
 
 #include "bls.hpp"
 #include "legacy.hpp"
+#include "secure.h"
 
 namespace bls {
-
 const size_t PrivateKey::PRIVATE_KEY_SIZE;
 
 PrivateKey PrivateKey::FromSeedBIP32(const Bytes& seed) {
@@ -24,27 +24,23 @@ PrivateKey PrivateKey::FromSeedBIP32(const Bytes& seed) {
     const uint8_t hmacKey[] = {66, 76, 83, 32, 112, 114, 105, 118, 97, 116, 101,
                                32, 107, 101, 121, 32, 115, 101, 101, 100};
 
-    auto* hash = Util::SecAlloc<uint8_t>(
-        PrivateKey::PRIVATE_KEY_SIZE);
+    util::SecVector<uint8_t> hash(PrivateKey::PRIVATE_KEY_SIZE);
 
     // Hash the seed into sk
-    md_hmac(hash, seed.begin(), (int)seed.size(), hmacKey, sizeof(hmacKey));
+    md_hmac(hash.data(), seed.begin(), (int)seed.size(), hmacKey,
+            sizeof(hmacKey));
 
-    bn_t order;
-    bn_new(order);
+    util::Bn order;
     g1_get_ord(order);
 
     // Make sure private key is less than the curve order
-    bn_t* skBn = Util::SecAlloc<bn_t>(1);
-    bn_new(*skBn);
-    bn_read_bin(*skBn, hash, PrivateKey::PRIVATE_KEY_SIZE);
-    bn_mod_basic(*skBn, *skBn, order);
+    util::Bn skBn;
+    bn_read_bin(skBn, hash.data(), PrivateKey::PRIVATE_KEY_SIZE);
+    bn_mod_basic(skBn, skBn, order);
 
     PrivateKey k;
-    bn_copy(k.keydata, *skBn);
+    bn_copy(k.keydata, skBn);
 
-    Util::SecFree(skBn);
-    Util::SecFree(hash);
     return k;
 }
 
@@ -57,8 +53,7 @@ PrivateKey PrivateKey::FromBytes(const Bytes& bytes, bool modOrder)
 
     PrivateKey k;
     bn_read_bin(k.keydata, bytes.begin(), PrivateKey::PRIVATE_KEY_SIZE);
-    bn_t ord;
-    bn_new(ord);
+    util::Bn ord;
     g1_get_ord(ord);
     if (modOrder) {
         bn_mod_basic(k.keydata, k.keydata, ord);
@@ -80,16 +75,13 @@ PrivateKey PrivateKey::FromByteVector(const std::vector<uint8_t> bytes, bool mod
 // Construct a private key from a bytearray.
 PrivateKey PrivateKey::RandomPrivateKey()
 {
-    bn_t *r = Util::SecAlloc<bn_t>(1);
-    bn_new(*r);
-    bn_rand(*r, RLC_POS, 256);
+    util::Bn r;
+    bn_rand(r, RLC_POS, 256);
     PrivateKey k;
-    bn_copy(k.keydata, *r);
-    bn_t ord;
-    bn_new(ord);
+    bn_copy(k.keydata, r);
+    util::Bn ord;
     g1_get_ord(ord);
     bn_mod_basic(k.keydata, k.keydata, ord);
-    Util::SecFree(r);
     return k;
 }
 
@@ -119,7 +111,7 @@ PrivateKey::~PrivateKey()
 void PrivateKey::DeallocateKeyData()
 {
     if(keydata != nullptr) {
-        Util::SecFree(keydata);
+        util::SecFree(keydata, sizeof(bn_st));
         keydata = nullptr;
     }
     InvalidateCaches();
@@ -135,13 +127,20 @@ PrivateKey& PrivateKey::operator=(const PrivateKey& other)
 {
     CheckKeyData();
     other.CheckKeyData();
+    if (this == &other) {
+        return *this;
+    }
     InvalidateCaches();
+    util::SecureWipe(keydata->dp, sizeof(keydata->dp));
     bn_copy(keydata, other.keydata);
     return *this;
 }
 
 PrivateKey& PrivateKey::operator=(PrivateKey&& other)
 {
+    if (this == &other) {
+        return *this;
+    }
     DeallocateKeyData();
     keydata = std::exchange(other.keydata, nullptr);
     other.InvalidateCaches();
@@ -152,11 +151,10 @@ const G1Element& PrivateKey::GetG1Element() const
 {
     if (!fG1CacheValid) {
         CheckKeyData();
-        g1_st *p = Util::SecAlloc<g1_st>(1);
-        g1_mul_gen(p, keydata);
+        util::SecPtr<g1_st> p = util::SecMake<g1_st>();
+        g1_mul_gen(p.get(), keydata);
 
-        g1Cache = G1Element::FromNative(p);
-        Util::SecFree(p);
+        g1Cache = G1Element::FromNative(p.get());
         fG1CacheValid = true;
     }
     return g1Cache;
@@ -166,11 +164,10 @@ const G2Element& PrivateKey::GetG2Element() const
 {
     if (!fG2CacheValid) {
         CheckKeyData();
-        g2_st *q = Util::SecAlloc<g2_st>(1);
-        g2_mul_gen(q, keydata);
+        util::SecPtr<g2_st> q = util::SecMake<g2_st>();
+        g2_mul_gen(q.get(), keydata);
 
-        g2Cache = G2Element::FromNative(q);
-        Util::SecFree(q);
+        g2Cache = G2Element::FromNative(q.get());
         fG2CacheValid = true;
     }
     return g2Cache;
@@ -184,12 +181,10 @@ bool PrivateKey::HasKeyData() const
 G1Element operator*(const G1Element &a, const PrivateKey &k)
 {
     k.CheckKeyData();
-    g1_st* ans = Util::SecAlloc<g1_st>(1);
-    a.ToNative(ans);
-    g1_mul(ans, ans, k.keydata);
-    G1Element ret = G1Element::FromNative(ans);
-    Util::SecFree(ans);
-    return ret;
+    util::SecPtr<g1_st> ans = util::SecMake<g1_st>();
+    a.ToNative(ans.get());
+    g1_mul(ans.get(), ans.get(), k.keydata);
+    return G1Element::FromNative(ans.get());
 }
 
 G1Element operator*(const PrivateKey &k, const G1Element &a) { return a * k; }
@@ -197,12 +192,10 @@ G1Element operator*(const PrivateKey &k, const G1Element &a) { return a * k; }
 G2Element operator*(const G2Element &a, const PrivateKey &k)
 {
     k.CheckKeyData();
-    g2_st* ans = Util::SecAlloc<g2_st>(1);
-    a.ToNative(ans);
-    g2_mul(ans, ans, k.keydata);
-    G2Element ret = G2Element::FromNative(ans);
-    Util::SecFree(ans);
-    return ret;
+    util::SecPtr<g2_st> ans = util::SecMake<g2_st>();
+    a.ToNative(ans.get());
+    g2_mul(ans.get(), ans.get(), k.keydata);
+    return G2Element::FromNative(ans.get());
 }
 
 G2Element operator*(const PrivateKey &k, const G2Element &a) { return a * k; }
@@ -210,8 +203,7 @@ G2Element operator*(const PrivateKey &k, const G2Element &a) { return a * k; }
 PrivateKey operator*(const PrivateKey& k, const bn_t& a)
 {
     k.CheckKeyData();
-    bn_t order;
-    bn_new(order);
+    util::Bn order;
     g2_get_ord(order);
 
     PrivateKey ret;
@@ -225,13 +217,11 @@ PrivateKey operator*(const bn_t& a, const PrivateKey& k) { return a * k; }
 G2Element PrivateKey::GetG2Power(const G2Element& element) const
 {
     CheckKeyData();
-    g2_st* q = Util::SecAlloc<g2_st>(1);
-    element.ToNative(q);
-    g2_mul(q, q, keydata);
+    util::SecPtr<g2_st> q = util::SecMake<g2_st>();
+    element.ToNative(q.get());
+    g2_mul(q.get(), q.get(), keydata);
 
-    const G2Element ret = G2Element::FromNative(q);
-    Util::SecFree(q);
-    return ret;
+    return G2Element::FromNative(q.get());
 }
 
 PrivateKey PrivateKey::Aggregate(std::vector<PrivateKey> const &privateKeys)
@@ -240,8 +230,7 @@ PrivateKey PrivateKey::Aggregate(std::vector<PrivateKey> const &privateKeys)
         throw std::length_error("Number of private keys must be at least 1");
     }
 
-    bn_t order;
-    bn_new(order);
+    util::Bn order;
     g1_get_ord(order);
 
     PrivateKey ret;
@@ -319,7 +308,7 @@ G2Element PrivateKey::SignG2(
 void PrivateKey::AllocateKeyData()
 {
     assert(!keydata);
-    keydata = Util::SecAlloc<bn_st>(1);
+    keydata = util::SecAlloc<bn_st>(1);
     keydata->alloc = RLC_BN_SIZE;
     bn_zero(keydata);
 }
@@ -330,5 +319,4 @@ void PrivateKey::CheckKeyData() const
         throw std::runtime_error("PrivateKey::CheckKeyData keydata not initialized");
     }
 }
-
 }  // end namespace bls
