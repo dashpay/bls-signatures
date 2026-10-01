@@ -22,7 +22,7 @@ namespace bls {
  * @param[in] msg   - the byte array to map (must be 32 bytes).
  * @param[in] len   - the array length in bytes (must be 32).
  */
-void ep2_map_legacy(blst_p2 *p, const uint8_t *msg, int len);
+void ep2_map_legacy(blst_p2 *p, const uint8_t *msg, size_t len);
 } // namespace bls
 
 #endif  // #define SRC_LEGACY_HPP_

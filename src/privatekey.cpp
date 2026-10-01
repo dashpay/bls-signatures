@@ -297,7 +297,7 @@ G2Element PrivateKey::SignG2(
 
     blst_p2 *pt = Util::SecAlloc<blst_p2>(1);
     if (fLegacy) {
-        ep2_map_legacy(pt, msg, static_cast<int>(len));
+        ep2_map_legacy(pt, msg, len);
     } else {
         blst_hash_to_g2(pt, msg, len, dst, dst_len, nullptr, 0);
     }

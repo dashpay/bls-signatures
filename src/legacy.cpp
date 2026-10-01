@@ -201,7 +201,7 @@ void FpFromBE64Wide(blst_fp& out, const uint8_t* be64)
 } // anon namespace
 
 namespace bls {
-void ep2_map_legacy(blst_p2* p, const uint8_t* msg, int len)
+void ep2_map_legacy(blst_p2* p, const uint8_t* msg, size_t len)
 {
     if (len != 32) {
         throw std::invalid_argument(

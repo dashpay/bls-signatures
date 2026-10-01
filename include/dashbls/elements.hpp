@@ -41,11 +41,11 @@ public:
     static G1Element FromMessage(
         const std::vector<uint8_t> &message,
         const uint8_t *dst,
-        int dst_len);
+        size_t dst_len);
     static G1Element FromMessage(
         Bytes message,
         const uint8_t *dst,
-        int dst_len);
+        size_t dst_len);
     static G1Element Generator();
 
     bool IsValid() const;
@@ -86,11 +86,11 @@ public:
     static G2Element FromMessage(
         const std::vector<uint8_t> &message,
         const uint8_t *dst,
-        int dst_len, bool legacy_encoding = false);
+        size_t dst_len, bool legacy_encoding = false);
     static G2Element FromMessage(
         Bytes message,
         const uint8_t *dst,
-        int dst_len, bool legacy_encoding = false);
+        size_t dst_len, bool legacy_encoding = false);
     static G2Element Generator();
 
     bool IsValid() const;
