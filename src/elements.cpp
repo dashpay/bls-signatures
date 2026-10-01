@@ -215,7 +215,7 @@ G1Element G1Element::FromBytesUnchecked(Bytes const bytes, bool fLegacy)
 
     // check if the element is canonical
     const uint8_t* raw_bytes = bytes.begin();
-    bool fZerosOnly =
+    bool fZerosOnly = (raw_bytes[0] & 0x1f) == 0 &&
         Util::HasOnlyZeros(Bytes(raw_bytes + 1, bytes.size() - 1));
     if ((bytes[0] & 0xc0) == 0xc0) {  // representing infinity
         // enforce that infinity must be 0xc0000..00

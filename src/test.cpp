@@ -2079,6 +2079,20 @@ TEST_CASE("FastAggregateVerify rejects identity elements")
     }
 }
 
+TEST_CASE("G1 zeros-only check masks the flag bits of the first byte")
+{
+    // 0x85 || 47 zero bytes encodes x = 5 * 2^376, not an all-zero payload.
+    // relic decompressed it to an on-curve point outside the subgroup, so the
+    // unchecked decoder must do the same and the checked one must reject it
+    // for that reason, as the G2 decoder already does.
+    std::vector<uint8_t> in(48, 0);
+    in[0] = 0x85;
+    G1Element u = G1Element::FromBytesUnchecked(Bytes(in));
+    REQUIRE(!u.IsValid());
+    REQUIRE(u.Serialize() == in);
+    REQUIRE_THROWS(G1Element::FromBytes(Bytes(in)));
+}
+
 TEST_CASE("IsValid rejects points off the curve")
 {
     // (4x, 8y, z) of the generator is not on the curve but passes blst's
