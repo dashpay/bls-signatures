@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 bls-signatures = { path = "../bls-signatures" }
+sha2 = "0.10"

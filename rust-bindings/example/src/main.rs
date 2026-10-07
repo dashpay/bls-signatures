@@ -1,4 +1,5 @@
 use bls_signatures::{bip32::ExtendedPrivateKey, LegacySchemeMPL, Scheme};
+use sha2::{Digest, Sha256};
 
 const SEED: &'static [u8] = b"seedweedseedweedseedweedseedweed";
 
@@ -35,10 +36,10 @@ fn check_bip32_legacy_scheme() {
         .expect("cannot get extended public key");
 
     let scheme = LegacySchemeMPL::new();
-    let message = b"dash is og";
-    let signature = scheme.sign(&private_key.private_key(), message);
+    let message = Sha256::digest(b"dash is og");
+    let signature = scheme.sign(&private_key.private_key(), &message);
 
-    assert!(scheme.verify(&public_key.public_key(), message, &signature));
+    assert!(scheme.verify(&public_key.public_key(), &message, &signature));
 }
 
 fn main() {
