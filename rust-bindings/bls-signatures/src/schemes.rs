@@ -198,6 +198,9 @@ impl Scheme for LegacySchemeMPL {
     }
 
     fn sign(&self, private_key: &PrivateKey, message: &[u8]) -> G2Element {
+        // The legacy scheme signs 32-byte message hashes; the C++ side throws
+        // for anything else, and a C++ exception must not cross the FFI.
+        assert_eq!(message.len(), 32, "the legacy scheme signs a 32-byte message hash");
         G2Element {
             c_element: unsafe {
                 LegacySchemeMPLSign(
@@ -383,10 +386,11 @@ mod tests {
             .g1_element()
             .expect("unable to get public key");
 
-        let message_1 = b"ayya";
-        let message_2 = b"ayyb";
-        let message_3 = b"ayyc";
-        let message_4 = b"ayyd";
+        // 32-byte messages: the legacy scheme only signs message hashes
+        let message_1 = &[0x11u8; 32];
+        let message_2 = &[0x22u8; 32];
+        let message_3 = &[0x33u8; 32];
+        let message_4 = &[0x44u8; 32];
 
         let signature_1 = scheme.sign(&private_key_1, message_1);
         let signature_2 = scheme.sign(&private_key_2, message_2);
