@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstring>
+#include <limits>
 
 #include "bls.hpp"
 #include "legacy.hpp"
@@ -118,6 +119,12 @@ G1Element G1Element::FromMessage(Bytes const message,
                                  int dst_len)
 {
     G1Element ans;
+    // relic takes the length as an int and md_xmd does not check it, so a
+    // message at or beyond 2 GiB would narrow negative and be widened back
+    // into an enormous read.
+    if (message.size() > (size_t)std::numeric_limits<int>::max()) {
+        throw std::invalid_argument("G1Element::FromMessage: message length exceeds INT_MAX");
+    }
     ep_map_dst(ans.p, message.begin(), (int)message.size(), dst, dst_len);
     BLS::CheckRelicErrors();
     assert(ans.IsValid());
@@ -340,6 +347,9 @@ G2Element G2Element::FromMessage(Bytes const message,
     if (fLegacy) {
         ep2_map_legacy(ans.q, message.begin(), BLS::MESSAGE_HASH_LEN);
     } else {
+        if (message.size() > (size_t)std::numeric_limits<int>::max()) {
+            throw std::invalid_argument("G2Element::FromMessage: message length exceeds INT_MAX");
+        }
         ep2_map_dst(ans.q, message.begin(), (int)message.size(), dst, dst_len);
     }
     BLS::CheckRelicErrors();
