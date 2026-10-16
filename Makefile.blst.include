@@ -1,0 +1,26 @@
+# Copyright (c) 2026 The Dash Core developers
+# Distributed under the MIT software license, see the accompanying
+# file COPYING.MIT or http://www.opensource.org/licenses/mit-license.php.
+
+LIBBLST = libblst.la
+
+# __BLST_PORTABLE__ compiles both the ADX and the generic x86_64 code paths
+# and selects between them at run time; it has no effect on aarch64.
+BLST_CPPFLAGS = -D__BLST_PORTABLE__
+
+BLST_INCLUDES = -I$(top_srcdir)/depends/blst/bindings
+
+BLST_H = \
+	depends/blst/bindings/blst.h \
+	depends/blst/bindings/blst_aux.h
+
+noinst_LTLIBRARIES += $(LIBBLST)
+
+libblst_la_SOURCES = \
+	$(BLST_H) \
+	depends/blst/src/server.c \
+	depends/blst/build/assembly.S
+
+libblst_la_CPPFLAGS = $(AM_CPPFLAGS) $(BLST_CPPFLAGS)
+libblst_la_CFLAGS   = $(AM_CFLAGS) -fno-builtin
+libblst_la_CCASFLAGS = $(AM_CCASFLAGS) $(BLST_CPPFLAGS)

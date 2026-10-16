@@ -32,6 +32,13 @@ class G1Element;
 class G2Element;
 class GTElement;
 
+// Toggle for the accelerated (blst-based) deserialization fast path, which is
+// enabled by default. Only meaningful when the library was built with blst
+// support; otherwise setting is a no-op and querying always returns false.
+// Intended for tests and benchmarking.
+void SetDeserializationFastPathEnabled(bool enabled);
+bool IsDeserializationFastPathEnabled();
+
 class G1Element {
 public:
     static const size_t SIZE = 48;

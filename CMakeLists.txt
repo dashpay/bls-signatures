@@ -111,6 +111,30 @@ set(MI_OVERRIDE     "off" CACHE STRING "")
 add_subdirectory(depends/relic)
 add_subdirectory(depends/mimalloc)
 
+# blst (depends/blst) provides an accelerated deserialization path for
+# BLS12-381 points. It is only usable on 64-bit little-endian x86_64/aarch64
+# hosts, where the bundled assembly is supported and relic's internal
+# field-element layout (6x64-bit little-endian limbs, Montgomery form with
+# R = 2^384) matches blst's exactly.
+if(EMSCRIPTEN)
+  set(BLST_SUPPORTED OFF)
+else()
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" BLST_HOST_PROCESSOR)
+  if(BLST_HOST_PROCESSOR MATCHES "^(x86_64|amd64|aarch64|arm64)$" AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(BLST_SUPPORTED ON)
+  else()
+    set(BLST_SUPPORTED OFF)
+  endif()
+endif()
+option(USE_BLST "Use the bundled blst library to accelerate BLS12-381 deserialization" ${BLST_SUPPORTED})
+if(USE_BLST AND NOT BLST_SUPPORTED)
+  message(FATAL_ERROR "blst is not supported on this host (requires little-endian x86_64 or aarch64)")
+endif()
+message(STATUS "Use blst: ${USE_BLST}")
+if(USE_BLST)
+  add_subdirectory(depends/blst)
+endif()
+
 #message(STATUS "Patching Relic to make setjmp.h inclusion conditional")
 #
 #execute_process(

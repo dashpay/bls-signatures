@@ -116,6 +116,62 @@ void benchBatchVerification() {
     endStopwatch("Batch verification", start, numIters);
 }
 
+// Compares checked deserialization (FromBytes, including the subgroup check)
+// with the accelerated blst fast path enabled against the pure relic path,
+// for both G1 (public keys) and G2 (signatures), in both the current and the
+// legacy scheme. On hosts/builds without blst support both runs take the
+// relic path and report (near) identical numbers.
+void benchDeserialize() {
+    const int numG1Iters = 2000;
+    const int numG2Iters = 1000;
+
+    vector<vector<uint8_t>> pk_bytes, pk_bytes_legacy;
+    vector<vector<uint8_t>> sig_bytes, sig_bytes_legacy;
+    for (int i = 0; i < numG1Iters; i++) {
+        PrivateKey sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        G1Element pk = sk.GetG1Element();
+        pk_bytes.push_back(pk.Serialize(false));
+        pk_bytes_legacy.push_back(pk.Serialize(true));
+    }
+    for (int i = 0; i < numG2Iters; i++) {
+        PrivateKey sk = BasicSchemeMPL().KeyGen(getRandomSeed());
+        vector<uint8_t> message = sk.GetG1Element().Serialize();
+        G2Element sig = BasicSchemeMPL().Sign(sk, message);
+        sig_bytes.push_back(sig.Serialize(false));
+        sig_bytes_legacy.push_back(sig.Serialize(true));
+    }
+
+    for (bool fastPath : {true, false}) {
+        SetDeserializationFastPathEnabled(fastPath);
+        const string suffix = fastPath ? " [blst fast path]" : " [relic only]";
+
+        auto start = startStopwatch();
+        for (auto const& pk : pk_bytes) {
+            G1Element::FromBytes(Bytes(pk), false);
+        }
+        endStopwatch("G1 FromBytes, checked" + suffix, start, numG1Iters);
+
+        start = startStopwatch();
+        for (auto const& pk : pk_bytes_legacy) {
+            G1Element::FromBytes(Bytes(pk), true);
+        }
+        endStopwatch("G1 FromBytes, legacy" + suffix, start, numG1Iters);
+
+        start = startStopwatch();
+        for (auto const& sig : sig_bytes) {
+            G2Element::FromBytes(Bytes(sig), false);
+        }
+        endStopwatch("G2 FromBytes, checked" + suffix, start, numG2Iters);
+
+        start = startStopwatch();
+        for (auto const& sig : sig_bytes_legacy) {
+            G2Element::FromBytes(Bytes(sig), true);
+        }
+        endStopwatch("G2 FromBytes, legacy" + suffix, start, numG2Iters);
+    }
+    SetDeserializationFastPathEnabled(true);
+}
+
 void benchSerialize() {
     const int numIters = 5000000;
     PrivateKey sk = BasicSchemeMPL().KeyGen(getRandomSeed());
@@ -172,6 +228,7 @@ int main(int argc, char* argv[]) {
     benchSigs();
     benchVerification();
     benchBatchVerification();
+    benchDeserialize();
     benchSerialize();
     benchSerializeToArray();
 }

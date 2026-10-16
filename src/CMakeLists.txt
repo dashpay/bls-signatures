@@ -34,6 +34,11 @@ target_link_libraries(dashbls
     mimalloc-static
 )
 
+if(USE_BLST)
+  target_compile_definitions(dashbls PRIVATE BLS_USE_BLST)
+  target_link_libraries(dashbls PUBLIC blst)
+endif()
+
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../depends/relic/include/ DESTINATION include/dashbls)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/../depends/relic/include/ DESTINATION include/dashbls)
 install(FILES ${HEADERS} DESTINATION include/dashbls)

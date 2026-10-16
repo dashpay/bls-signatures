@@ -210,6 +210,14 @@ fn main() {
     };
     println!("cargo:rustc-link-lib=static={}", mimalloc_lib);
 
+    // blst is only built (and linked into libdashbls) on little-endian
+    // x86_64/aarch64 hosts; link it only when CMake actually produced it.
+    let blst_dir = bls_dash_build_path.join("depends/blst");
+    if blst_dir.join("libblst.a").exists() {
+        println!("cargo:rustc-link-search={}", blst_dir.display());
+        println!("cargo:rustc-link-lib=static=blst");
+    }
+
     println!(
         "cargo:rustc-link-search={}",
         bls_dash_build_path.join("src").display()
