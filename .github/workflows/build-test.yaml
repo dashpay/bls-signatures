@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.os }}, ${{ matrix.compiler.cc }}, ${{ matrix.backend }} backend
+    name: ${{ matrix.os }}, ${{ matrix.compiler.cc }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -28,7 +28,6 @@ jobs:
             cxx: g++
           - cc: clang
             cxx: clang++
-        backend: [ easy, gmp ]
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -37,21 +36,20 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get update
-        sudo apt-get install -qq --yes valgrind libgmp-dev cmake
+        sudo apt-get install -qq --yes valgrind cmake
         hash -r
         cmake --version
 
     - name: Prepare build system for macOS
       if: startsWith(matrix.os, 'macos')
       run: |
-        ls -l
         export MACOSX_DEPLOYMENT_TARGET=10.14
-        brew install gmp pkg-config
+        brew install pkg-config
 
     - name: Build library using CMake
       run: |
         mkdir -p build && cd build
-        CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake .. -DARITH=${{ matrix.backend }} -DBUILD_BLS_PYTHON_BINDINGS=0 -DCMAKE_BUILD_TYPE=Debug
+        CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake .. -DBUILD_BLS_PYTHON_BINDINGS=0 -DCMAKE_BUILD_TYPE=Debug
         cmake --build . -- -j 6
         mv src/runtest ..
 
