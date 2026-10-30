@@ -198,6 +198,9 @@ impl Scheme for LegacySchemeMPL {
     }
 
     fn sign(&self, private_key: &PrivateKey, message: &[u8]) -> G2Element {
+        // The legacy scheme signs 32-byte message hashes; the C++ side throws
+        // for anything else, and a C++ exception must not cross the FFI.
+        assert_eq!(message.len(), 32, "the legacy scheme signs a 32-byte message hash");
         G2Element {
             c_element: unsafe {
                 LegacySchemeMPLSign(
@@ -383,10 +386,11 @@ mod tests {
             .g1_element()
             .expect("unable to get public key");
 
-        let message_1 = b"ayya";
-        let message_2 = b"ayyb";
-        let message_3 = b"ayyc";
-        let message_4 = b"ayyd";
+        // 32-byte messages: the legacy scheme only signs message hashes
+        let message_1 = &[0x11u8; 32];
+        let message_2 = &[0x22u8; 32];
+        let message_3 = &[0x33u8; 32];
+        let message_4 = &[0x44u8; 32];
 
         let signature_1 = scheme.sign(&private_key_1, message_1);
         let signature_2 = scheme.sign(&private_key_2, message_2);
@@ -430,5 +434,43 @@ mod tests {
     #[test]
     fn verify_aggregate_legacy() {
         verify_aggregate(LegacySchemeMPL::new());
+    }
+
+    fn legacy_key_and_signature() -> (LegacySchemeMPL, G1Element, G2Element) {
+        let scheme = LegacySchemeMPL::new();
+        let private_key = PrivateKey::key_gen(&scheme, b"seedweedseedweedseedweedseedweed")
+            .expect("unable to generate private key");
+        let public_key = private_key.g1_element().expect("unable to get public key");
+        let signature = scheme.sign(&private_key, &[0x11u8; 32]);
+        (scheme, public_key, signature)
+    }
+
+    #[test]
+    #[should_panic(expected = "32-byte message hash")]
+    fn legacy_sign_rejects_short_message() {
+        let scheme = LegacySchemeMPL::new();
+        let private_key = PrivateKey::key_gen(&scheme, b"seedweedseedweedseedweedseedweed")
+            .expect("unable to generate private key");
+        scheme.sign(&private_key, &[0x11u8; 31]);
+    }
+
+    #[test]
+    #[should_panic(expected = "32-byte message hash")]
+    fn legacy_sign_rejects_long_message() {
+        let scheme = LegacySchemeMPL::new();
+        let private_key = PrivateKey::key_gen(&scheme, b"seedweedseedweedseedweedseedweed")
+            .expect("unable to generate private key");
+        scheme.sign(&private_key, &[0x11u8; 33]);
+    }
+
+    #[test]
+    fn legacy_verify_rejects_wrong_message_length() {
+        let (scheme, public_key, signature) = legacy_key_and_signature();
+        assert!(scheme.verify(&public_key, &[0x11u8; 32], &signature));
+        for message in [&[0x11u8; 31][..], &[0x11u8; 33][..]] {
+            assert!(!scheme.verify(&public_key, message, &signature));
+            assert!(!scheme.verify_secure([&public_key], message, &signature));
+            assert!(!scheme.aggregate_verify([&public_key], [message], &signature));
+        }
     }
 }
