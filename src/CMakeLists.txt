@@ -47,6 +47,11 @@ endif()
 add_library(dashbls ${bls_sources})
 target_include_directories(dashbls PUBLIC ${blst_SOURCE_DIR}/bindings ${PROJECT_SOURCE_DIR}/include/dashbls/)
 target_compile_definitions(dashbls PRIVATE __BLST_PORTABLE__ BLSALLOC_MIMALLOC=1)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64|aarch64|arm64|ARM64")
+  # blst ships assembly for x86_64 and aarch64 only; other 64-bit targets
+  # (riscv64, powerpc64, ...) build its portable C code instead.
+  target_compile_definitions(dashbls PRIVATE __BLST_NO_ASM__)
+endif()
 target_link_libraries(dashbls
   PUBLIC
     mimalloc-static
