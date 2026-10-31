@@ -35,7 +35,7 @@ else()
   list(APPEND bls_sources
     ${blst_SOURCE_DIR}/build/assembly.S
   )
-  add_compile_options(-fno-builtin)
+  set_source_files_properties(${blst_SOURCE_DIR}/src/server.c PROPERTIES COMPILE_OPTIONS -fno-builtin)
   add_compile_options(-fPIC)
   add_compile_options(-Wall)
   add_compile_options(-Wextra)
