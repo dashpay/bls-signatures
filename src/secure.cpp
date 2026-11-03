@@ -13,8 +13,10 @@
 #include "mimalloc.h"
 #endif
 
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include <new>
 #include <stdexcept>
 
@@ -45,12 +47,14 @@ void SecureWipe(void* ptr, size_t len) noexcept
 
 namespace {
 #if BLSALLOC_MIMALLOC
-Util::SecureAllocCallback g_pfnSecureAlloc{mi_malloc};
-Util::SecureFreeCallback g_pfnSecureFree{mi_free};
+std::atomic<Util::SecureAllocCallback> g_pfnSecureAlloc{mi_malloc};
+std::atomic<Util::SecureFreeCallback> g_pfnSecureFree{mi_free};
 #else
-Util::SecureAllocCallback g_pfnSecureAlloc{std::malloc};
-Util::SecureFreeCallback g_pfnSecureFree{std::free};
+std::atomic<Util::SecureAllocCallback> g_pfnSecureAlloc{std::malloc};
+std::atomic<Util::SecureFreeCallback> g_pfnSecureFree{std::free};
 #endif
+// Each pair is installed and read under this, so its halves never mix.
+std::mutex g_mutexSecureAllocator;
 } // anonymous namespace
 
 void SetSecureAllocator(Util::SecureAllocCallback pfnAlloc,
@@ -59,18 +63,20 @@ void SetSecureAllocator(Util::SecureAllocCallback pfnAlloc,
     if (pfnAlloc == nullptr || pfnFree == nullptr) {
         throw std::invalid_argument("secure allocator must not be null");
     }
-    g_pfnSecureAlloc = pfnAlloc;
-    g_pfnSecureFree = pfnFree;
+    std::lock_guard<std::mutex> lock(g_mutexSecureAllocator);
+    g_pfnSecureAlloc.store(pfnAlloc);
+    g_pfnSecureFree.store(pfnFree);
 }
 
 void GetSecureAllocator(Util::SecureAllocCallback* ppfnAlloc,
                         Util::SecureFreeCallback* ppfnFree)
 {
+    std::lock_guard<std::mutex> lock(g_mutexSecureAllocator);
     if (ppfnAlloc != nullptr) {
-        *ppfnAlloc = g_pfnSecureAlloc;
+        *ppfnAlloc = g_pfnSecureAlloc.load();
     }
     if (ppfnFree != nullptr) {
-        *ppfnFree = g_pfnSecureFree;
+        *ppfnFree = g_pfnSecureFree.load();
     }
 }
 
@@ -80,7 +86,7 @@ void* SecMalloc(size_t nBytes)
         // malloc(0) may return nullptr, round up like `operator new`
         nBytes++;
     }
-    void* pAllocation = g_pfnSecureAlloc(nBytes);
+    void* pAllocation = g_pfnSecureAlloc.load()(nBytes);
     if (pAllocation == nullptr) {
         throw std::bad_alloc();
     }
@@ -94,7 +100,7 @@ void SecFree(void* ptr, size_t nBytes)
         return;
     }
     SecureWipe(ptr, nBytes);
-    g_pfnSecureFree(ptr);
+    g_pfnSecureFree.load()(ptr);
 }
 } // namespace util
 } // namespace bls

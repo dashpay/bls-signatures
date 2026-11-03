@@ -36,6 +36,9 @@ void SecureWipe(void* ptr, size_t len) noexcept;
  * pfnAlloc must return storage aligned for any type with alignment no greater
  * than alignof(std::max_align_t).
  *
+ * Other threads may allocate meanwhile, but storage has to go back to the
+ * allocator it came from, so swap only while none of it is outstanding.
+ *
  * @param   pfnAlloc  Called to obtain memory, returning nullptr on failure.
  * @param   pfnFree   Called to release what pfnAlloc returned.
  */

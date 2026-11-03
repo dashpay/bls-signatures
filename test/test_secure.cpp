@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -79,6 +80,17 @@ TEST_CASE("Secure allocation is safe to use from several threads")
     // here to be run under a sanitizer rather than to assert an outcome.
     std::vector<std::thread> threads;
 
+    // Reinstalling the same pair keeps every allocation's free valid, so the
+    // only thing left to race is the callbacks themselves.
+    bls::Util::SecureAllocCallback pfnAlloc{nullptr};
+    bls::Util::SecureFreeCallback pfnFree{nullptr};
+    bls::util::GetSecureAllocator(&pfnAlloc, &pfnFree);
+    threads.emplace_back([pfnAlloc, pfnFree] {
+        for (int j = 0; j < 250; ++j) {
+            bls::util::SetSecureAllocator(pfnAlloc, pfnFree);
+        }
+    });
+
     for (int i = 0; i < 4; ++i) {
         threads.emplace_back([] {
             for (int j = 0; j < 250; ++j) {
@@ -92,6 +104,64 @@ TEST_CASE("Secure allocation is safe to use from several threads")
         thread.join();
     }
     SUCCEED("no allocation raced another");
+}
+
+namespace {
+void* AllocA(size_t nBytes) { return std::malloc(nBytes); }
+void FreeA(void* ptr) { std::free(ptr); }
+void* AllocB(size_t nBytes) { return std::malloc(nBytes); }
+void FreeB(void* ptr) { std::free(ptr); }
+
+bool IsCoherent(bls::Util::SecureAllocCallback pfnAlloc,
+                bls::Util::SecureFreeCallback pfnFree)
+{
+    return (pfnAlloc == AllocA && pfnFree == FreeA) ||
+           (pfnAlloc == AllocB && pfnFree == FreeB);
+}
+} // anonymous namespace
+
+TEST_CASE("Installing allocators concurrently never mixes their halves")
+{
+    bls::Util::SecureAllocCallback pfnAlloc{nullptr};
+    bls::Util::SecureFreeCallback pfnFree{nullptr};
+    bls::util::GetSecureAllocator(&pfnAlloc, &pfnFree);
+
+    std::atomic<bool> fMixed{false};
+    std::atomic<bool> fDone{false};
+    std::thread reader([&] {
+        while (!fDone.load()) {
+            bls::Util::SecureAllocCallback pfnSeenAlloc{nullptr};
+            bls::Util::SecureFreeCallback pfnSeenFree{nullptr};
+            bls::util::GetSecureAllocator(&pfnSeenAlloc, &pfnSeenFree);
+            const bool fOriginal =
+                pfnSeenAlloc == pfnAlloc && pfnSeenFree == pfnFree;
+            if (!fOriginal && !IsCoherent(pfnSeenAlloc, pfnSeenFree)) {
+                fMixed = true;
+            }
+        }
+    });
+    std::thread installA([] {
+        for (int j = 0; j < 20000; ++j) {
+            bls::util::SetSecureAllocator(AllocA, FreeA);
+        }
+    });
+    std::thread installB([] {
+        for (int j = 0; j < 20000; ++j) {
+            bls::util::SetSecureAllocator(AllocB, FreeB);
+        }
+    });
+    installA.join();
+    installB.join();
+    fDone = true;
+    reader.join();
+
+    bls::Util::SecureAllocCallback pfnLastAlloc{nullptr};
+    bls::Util::SecureFreeCallback pfnLastFree{nullptr};
+    bls::util::GetSecureAllocator(&pfnLastAlloc, &pfnLastFree);
+    bls::util::SetSecureAllocator(pfnAlloc, pfnFree);
+
+    REQUIRE_FALSE(fMixed.load());
+    REQUIRE(IsCoherent(pfnLastAlloc, pfnLastFree));
 }
 
 TEST_CASE("The secure allocator is never called through a null")
