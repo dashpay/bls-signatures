@@ -197,6 +197,7 @@ func (s *coreMPL) AggregateVerify(pks []*G1Element, msgs [][]byte, sig *G2Elemen
 	defer C.FreePtrArray(cPkArrPtr, C.size_t(len(pks)))
 	cMsgArrPtr, msgLens := cAllocMsgs(msgs)
 	defer C.FreePtrArray(cMsgArrPtr, C.size_t(len(msgs)))
+	defer cFreeElems(cMsgArrPtr, len(msgs))
 	val := C.CCoreMPLAggregateVerify(
 		s.val,
 		cPkArrPtr,
@@ -236,6 +237,7 @@ func (s *BasicSchemeMPL) AggregateVerify(pks []*G1Element, msgs [][]byte, sig *G
 	defer C.FreePtrArray(cPkArrPtr, C.size_t(len(pks)))
 	cMsgArrPtr, msgLens := cAllocMsgs(msgs)
 	defer C.FreePtrArray(cMsgArrPtr, C.size_t(len(msgs)))
+	defer cFreeElems(cMsgArrPtr, len(msgs))
 	val := C.CBasicSchemeMPLAggregateVerify(
 		s.val,
 		cPkArrPtr,
@@ -322,6 +324,7 @@ func (s *AugSchemeMPL) AggregateVerify(pks []*G1Element, msgs [][]byte, sig *G2E
 	defer C.FreePtrArray(cPkArrPtr, C.size_t(len(pks)))
 	cMsgArrPtr, msgLens := cAllocMsgs(msgs)
 	defer C.FreePtrArray(cMsgArrPtr, C.size_t(len(msgs)))
+	defer cFreeElems(cMsgArrPtr, len(msgs))
 	val := C.CAugSchemeMPLAggregateVerify(
 		s.val,
 		cPkArrPtr,

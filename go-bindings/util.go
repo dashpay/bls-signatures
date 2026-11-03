@@ -15,6 +15,7 @@
 package blschia
 
 // #include "blschia.h"
+// #include <stdlib.h>
 // #include <string.h>
 import "C"
 import (
@@ -72,4 +73,12 @@ func cAllocMsgs(msgs [][]byte) (*unsafe.Pointer, []int) {
 		msgLens[i] = len(msg)
 	}
 	return cMsgArrPtr, msgLens
+}
+
+// cFreeElems releases the C.CBytes copies an array holds, as FreePtrArray
+// releases only the array and the C++ side only borrows what it points to
+func cFreeElems(arr *unsafe.Pointer, n int) {
+	for i := 0; i < n; i++ {
+		C.free(C.GetPtrAtIndex(arr, C.int(i)))
+	}
 }
