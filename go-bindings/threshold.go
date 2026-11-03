@@ -128,6 +128,7 @@ func ThresholdPrivateKeyRecover(sks []*PrivateKey, hashes []Hash) (*PrivateKey, 
 	defer C.FreePtrArray(cArrPtr, C.size_t(len(sks)))
 	cHashArrPtr := cAllocHashes(hashes)
 	defer C.FreePtrArray(cHashArrPtr, C.size_t(len(hashes)))
+	defer cFreeElems(cHashArrPtr, len(hashes))
 	var cDidErr C.bool
 	sk := PrivateKey{
 		val: C.CThresholdPrivateKeyRecover(
@@ -154,6 +155,7 @@ func ThresholdPublicKeyRecover(pks []*G1Element, hashes []Hash) (*G1Element, err
 	defer C.FreePtrArray(cArrPtr, C.size_t(len(pks)))
 	cHashArrPtr := cAllocHashes(hashes)
 	defer C.FreePtrArray(cHashArrPtr, C.size_t(len(hashes)))
+	defer cFreeElems(cHashArrPtr, len(hashes))
 	var cDidErr C.bool
 	pk := G1Element{
 		val: C.CThresholdPublicKeyRecover(
@@ -180,6 +182,7 @@ func ThresholdSignatureRecover(sigs []*G2Element, hashes []Hash) (*G2Element, er
 	defer C.FreePtrArray(cArrPtr, C.size_t(len(sigs)))
 	cHashArrPtr := cAllocHashes(hashes)
 	defer C.FreePtrArray(cHashArrPtr, C.size_t(len(hashes)))
+	defer cFreeElems(cHashArrPtr, len(hashes))
 	var cDidErr C.bool
 	sig := G2Element{
 		val: C.CThresholdSignatureRecover(
