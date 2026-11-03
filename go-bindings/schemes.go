@@ -384,6 +384,7 @@ func (s *PopSchemeMPL) PopVerify(pk *G1Element, sig *G2Element) bool {
 // this method is a binding of bls::PopSchemeMPL::FastAggregateVerify
 func (s *PopSchemeMPL) FastAggregateVerify(pks []*G1Element, msg []byte, sig *G2Element) bool {
 	msgPtr := C.CBytes(msg)
+	defer C.free(msgPtr)
 	cPkArrPtr := cAllocPubKeys(pks...)
 	defer C.FreePtrArray(cPkArrPtr, C.size_t(len(pks)))
 	isVerified := C.CPopSchemeMPLFastAggregateVerify(
