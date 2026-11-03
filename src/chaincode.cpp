@@ -50,9 +50,9 @@ bool operator!=(ChainCode const &a,  ChainCode const &b) {
 }
 
 std::ostream &operator<<(std::ostream &os, ChainCode const &s) {
-    uint8_t buffer[ChainCode::SIZE];
-    s.Serialize(buffer);
-    return os << Util::HexStr(buffer, ChainCode::SIZE);
+    util::SecVector<uint8_t> buffer(ChainCode::SIZE);
+    s.Serialize(buffer.data());
+    return os << Util::HexStr(buffer.data(), buffer.size());
 }
 
 void ChainCode::Serialize(uint8_t *buffer) const {

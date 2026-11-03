@@ -14,6 +14,7 @@
 #include <cstring>
 #include <limits>
 #include <new>
+#include <sstream>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -312,5 +313,22 @@ TEST_CASE("A chain code has value semantics and clears itself")
                                 [](uint8_t b) { return b == 0; }));
             bls::util::SecFree(pHeld, sizeof(bls::ChainCode));
         }
+    }
+
+    SECTION("Printing leaves nothing behind")
+    {
+        const bls::ChainCode a = bls::ChainCode::FromBytes(bls::Bytes(vecA));
+        std::memset(g_arena, 0xcd, sizeof(g_arena));
+        std::ostringstream os;
+        {
+            ArenaGuard guard;
+            os << a;
+            REQUIRE(g_arenaUsed >= size_t{bls::ChainCode::SIZE});
+        }
+
+        REQUIRE(os.str() == bls::Util::HexStr(vecA));
+        // The serialized copy is the first thing the arena hands out.
+        REQUIRE(std::all_of(g_arena, g_arena + bls::ChainCode::SIZE,
+                            [](uint8_t b) { return b == 0; }));
     }
 }
