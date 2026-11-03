@@ -60,18 +60,6 @@ std::string Util::HexStr(const std::vector<uint8_t> &data) {
     return s.str();
 }
 
-void* Util::SecAllocBytes(size_t nBytes) {
-    Util::SecureAllocCallback pfnAlloc{nullptr};
-    util::GetSecureAllocator(&pfnAlloc, nullptr);
-    return pfnAlloc(nBytes);
-}
-
-void Util::SecFree(void* ptr) {
-    Util::SecureFreeCallback pfnFree{nullptr};
-    util::GetSecureAllocator(nullptr, &pfnFree);
-    pfnFree(ptr);
-}
-
 uint8_t Util::char2int(const char input) {
     if(input >= '0' && input <= '9')
         return input - '0';

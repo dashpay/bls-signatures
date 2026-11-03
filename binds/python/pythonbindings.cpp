@@ -32,6 +32,8 @@
 #include <dashbls/privatekey.hpp>
 #include <dashbls/schemes.hpp>
 
+#include "secure.h"
+
 namespace py = pybind11;
 using namespace bls;
 
@@ -161,7 +163,7 @@ PYBIND11_MODULE(dashbls, m)
             "__bytes__",
             [](const PrivateKey &k) {
                 uint8_t *output =
-                    Util::SecAlloc<uint8_t>(PrivateKey::PRIVATE_KEY_SIZE);
+                    util::SecAlloc<uint8_t>(PrivateKey::PRIVATE_KEY_SIZE);
                 {
                     RelicGuard guard;
                     k.Serialize(output);
@@ -169,7 +171,7 @@ PYBIND11_MODULE(dashbls, m)
                 py::bytes ret = py::bytes(
                     reinterpret_cast<char *>(output),
                     PrivateKey::PRIVATE_KEY_SIZE);
-                Util::SecFree(output);
+                util::SecFree(output, PrivateKey::PRIVATE_KEY_SIZE);
                 return ret;
             })
         .def(
@@ -187,12 +189,12 @@ PYBIND11_MODULE(dashbls, m)
         .def(py::self != py::self, py::call_guard<RelicGuard>())
         .def("__repr__", [](const PrivateKey &k) {
             RelicGuard guard;
-            uint8_t *output = Util::SecAlloc<uint8_t>(PrivateKey::PRIVATE_KEY_SIZE);
+            uint8_t *output = util::SecAlloc<uint8_t>(PrivateKey::PRIVATE_KEY_SIZE);
             k.Serialize(output);
             std::string ret =
                 "<PrivateKey " +
                 Util::HexStr(output, PrivateKey::PRIVATE_KEY_SIZE) + ">";
-            Util::SecFree(output);
+            util::SecFree(output, PrivateKey::PRIVATE_KEY_SIZE);
             return ret;
         });
 

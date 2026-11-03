@@ -74,20 +74,6 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
     static std::string HexStr(const std::vector<uint8_t> &data);
 
     /*
-     * Securely allocates a portion of memory. This prevents paging to disk,
-     * and zeroes out the memory when it's freed.
-     */
-    template<class T>
-    static T* SecAlloc(size_t numTs) {
-        return static_cast<T*>(SecAllocBytes(sizeof(T) * numTs));
-    }
-
-    /*
-     * Frees memory allocated using SecAlloc.
-     */
-    static void SecFree(void* ptr);
-
-    /*
      * Converts one hex character to an int.
      */
     static uint8_t char2int(const char input);
@@ -109,9 +95,6 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
     static uint32_t FourBytesToInt(const uint8_t* bytes);
 
     static bool HasOnlyZeros(const Bytes& bytes);
-
- private:
-    static void* SecAllocBytes(size_t nBytes);
 };
 } // end namespace bls
 #endif  // SRC_BLSUTIL_HPP_

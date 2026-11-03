@@ -14,8 +14,10 @@
 
 #include <vector>
 #include "dashbls/bls.hpp"
+#include "secure.h"
 #include "privatekey.h"
 #include "blschia.h"
+#include <stdexcept>
 #include "error.h"
 #include "utils.hpp"
 
@@ -47,9 +49,16 @@ CPrivateKey CPrivateKeyAggregate(void** sks, const size_t len) {
 
 void* CPrivateKeySerialize(const CPrivateKey sk) {
     const bls::PrivateKey* skPtr = (bls::PrivateKey*)sk;
-    uint8_t* buffer = bls::Util::SecAlloc<uint8_t>(bls::PrivateKey::PRIVATE_KEY_SIZE);
-    skPtr->Serialize(buffer);
-    return (void*)buffer;
+    uint8_t* buffer = nullptr;
+    try {
+        buffer = bls::util::SecAlloc<uint8_t>(bls::PrivateKey::PRIVATE_KEY_SIZE);
+        skPtr->Serialize(buffer);
+        return (void*)buffer;
+    } catch (const std::exception& ex) {
+        bls::util::SecFree(buffer, bls::PrivateKey::PRIVATE_KEY_SIZE);
+        gErrMsg = ex.what();
+        return nullptr;
+    }
 }
 
 size_t CPrivateKeySizeBytes() {

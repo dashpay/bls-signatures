@@ -19,10 +19,6 @@ namespace bls {
 
 const size_t BLS::MESSAGE_HASH_LEN;
 
-bool BLSInitResult = BLS::Init();
-
-bool BLS::Init() { return true; }
-
 void BLS::SetSecureAllocator(
     Util::SecureAllocCallback allocCb,
     Util::SecureFreeCallback freeCb)
