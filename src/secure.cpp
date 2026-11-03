@@ -7,8 +7,16 @@
 #endif
 
 #include "secure.h"
+#include "util.hpp"
 
+#if BLSALLOC_MIMALLOC
+#include "mimalloc.h"
+#endif
+
+#include <cstdlib>
 #include <cstring>
+#include <new>
+#include <stdexcept>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -33,6 +41,60 @@ void SecureWipe(void* ptr, size_t len) noexcept
     // be dropped as a dead store on a buffer nothing reads again.
     __asm__ __volatile__("" : : "r"(ptr) : "memory");
 #endif
+}
+
+namespace {
+#if BLSALLOC_MIMALLOC
+Util::SecureAllocCallback g_pfnSecureAlloc{mi_malloc};
+Util::SecureFreeCallback g_pfnSecureFree{mi_free};
+#else
+Util::SecureAllocCallback g_pfnSecureAlloc{std::malloc};
+Util::SecureFreeCallback g_pfnSecureFree{std::free};
+#endif
+} // anonymous namespace
+
+void SetSecureAllocator(Util::SecureAllocCallback pfnAlloc,
+                        Util::SecureFreeCallback pfnFree)
+{
+    if (pfnAlloc == nullptr || pfnFree == nullptr) {
+        throw std::invalid_argument("secure allocator must not be null");
+    }
+    g_pfnSecureAlloc = pfnAlloc;
+    g_pfnSecureFree = pfnFree;
+}
+
+void GetSecureAllocator(Util::SecureAllocCallback* ppfnAlloc,
+                        Util::SecureFreeCallback* ppfnFree)
+{
+    if (ppfnAlloc != nullptr) {
+        *ppfnAlloc = g_pfnSecureAlloc;
+    }
+    if (ppfnFree != nullptr) {
+        *ppfnFree = g_pfnSecureFree;
+    }
+}
+
+void* SecMalloc(size_t nBytes)
+{
+    if (nBytes == 0) {
+        // malloc(0) may return nullptr, round up like `operator new`
+        nBytes++;
+    }
+    void* pAllocation = g_pfnSecureAlloc(nBytes);
+    if (pAllocation == nullptr) {
+        throw std::bad_alloc();
+    }
+    return pAllocation;
+}
+
+void SecFree(void* ptr, size_t nBytes)
+{
+    // An installed callback need not accept nullptr as free does.
+    if (ptr == nullptr) {
+        return;
+    }
+    SecureWipe(ptr, nBytes);
+    g_pfnSecureFree(ptr);
 }
 } // namespace util
 } // namespace bls

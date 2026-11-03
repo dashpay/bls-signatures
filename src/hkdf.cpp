@@ -3,6 +3,7 @@
 // file COPYING.MIT or https://opensource.org/license/MIT
 
 #include "hkdf.hpp"
+#include "secure.h"
 
 namespace bls {
 void HKDF256::Extract(uint8_t* prk_output, const uint8_t* salt, const size_t saltLen, const uint8_t* ikm, const size_t ikm_len) {
@@ -18,9 +19,9 @@ void HKDF256::Expand(uint8_t* okm, size_t L, const uint8_t* prk, const uint8_t* 
     size_t N = (L + HASH_LEN - 1) / HASH_LEN; // Round up
     size_t bytesWritten = 0;
 
-    uint8_t* T = Util::SecAlloc<uint8_t>(HASH_LEN);
-    uint8_t* hmacInput1 = Util::SecAlloc<uint8_t>(infoLen + 1);
-    uint8_t* hmacInput = Util::SecAlloc<uint8_t>(HASH_LEN + infoLen + 1);
+    uint8_t* T = util::SecAlloc<uint8_t>(HASH_LEN);
+    uint8_t* hmacInput1 = util::SecAlloc<uint8_t>(infoLen + 1);
+    uint8_t* hmacInput = util::SecAlloc<uint8_t>(HASH_LEN + infoLen + 1);
 
     assert(N >= 1 && N <= 255);
 
@@ -43,9 +44,9 @@ void HKDF256::Expand(uint8_t* okm, size_t L, const uint8_t* prk, const uint8_t* 
         memcpy(okm + bytesWritten, T, to_write);
         bytesWritten += to_write;
     }
-    Util::SecFree(T);
-    Util::SecFree(hmacInput1);
-    Util::SecFree(hmacInput);
+    util::SecFree(T, HASH_LEN);
+    util::SecFree(hmacInput1, infoLen + 1);
+    util::SecFree(hmacInput, HASH_LEN + infoLen + 1);
     assert(bytesWritten == L);
 }
 
@@ -53,9 +54,9 @@ void HKDF256::ExtractExpand(uint8_t* output, size_t outputLen,
                           const uint8_t* key, size_t keyLen,
                           const uint8_t* salt, size_t saltLen,
                           const uint8_t* info, size_t infoLen) {
-    uint8_t* prk = Util::SecAlloc<uint8_t>(HASH_LEN);
+    uint8_t* prk = util::SecAlloc<uint8_t>(HASH_LEN);
     HKDF256::Extract(prk, salt, saltLen, key, keyLen);
     HKDF256::Expand(output, outputLen, prk, info, infoLen);
-    Util::SecFree(prk);
+    util::SecFree(prk, HASH_LEN);
 }
 } // namespace bls

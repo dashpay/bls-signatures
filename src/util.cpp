@@ -3,6 +3,7 @@
 // file COPYING.MIT or https://opensource.org/license/MIT
 
 #include "util.hpp"
+#include "secure.h"
 
 namespace bls {
 void Util::Hash256(uint8_t* output, const uint8_t* message,
@@ -16,7 +17,7 @@ void Util::md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_t
     constexpr size_t md_len = 32;
     // The pads and the padded key are derived from the key, so they live in
     // the same secure memory as the private keys (see SecAlloc).
-    uint8_t *buf = SecAlloc<uint8_t>(block_size + md_len + block_size + in_len + block_size);
+    uint8_t *buf = util::SecAlloc<uint8_t>(block_size + md_len + block_size + in_len + block_size);
     if (buf == NULL)
         throw std::runtime_error("out of memory");
     uint8_t *opad = buf;                          // block_size + md_len
@@ -40,7 +41,7 @@ void Util::md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_t
     Hash256(opad + block_size, ipad, block_size + in_len);
     Hash256(mac, opad, block_size + md_len);
 
-    SecFree(buf);
+    util::SecFree(buf, block_size + md_len + block_size + in_len + block_size);
 }
 
 std::string Util::HexStr(const uint8_t* data, size_t len) {
@@ -57,6 +58,18 @@ std::string Util::HexStr(const std::vector<uint8_t> &data) {
     for (size_t i=0; i < data.size(); ++i)
         s << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
     return s.str();
+}
+
+void* Util::SecAllocBytes(size_t nBytes) {
+    Util::SecureAllocCallback pfnAlloc{nullptr};
+    util::GetSecureAllocator(&pfnAlloc, nullptr);
+    return pfnAlloc(nBytes);
+}
+
+void Util::SecFree(void* ptr) {
+    Util::SecureFreeCallback pfnFree{nullptr};
+    util::GetSecureAllocator(nullptr, &pfnFree);
+    pfnFree(ptr);
 }
 
 uint8_t Util::char2int(const char input) {

@@ -79,15 +79,13 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
      */
     template<class T>
     static T* SecAlloc(size_t numTs) {
-        return static_cast<T*>(secureAllocCallback(sizeof(T) * numTs));
+        return static_cast<T*>(SecAllocBytes(sizeof(T) * numTs));
     }
 
     /*
      * Frees memory allocated using SecAlloc.
      */
-    static void SecFree(void* ptr) {
-        secureFreeCallback(ptr);
-    }
+    static void SecFree(void* ptr);
 
     /*
      * Converts one hex character to an int.
@@ -113,9 +111,7 @@ static void md_hmac(uint8_t *mac, const uint8_t *in, size_t in_len, const uint8_
     static bool HasOnlyZeros(const Bytes& bytes);
 
  private:
-    friend class BLS;
-    static SecureAllocCallback secureAllocCallback;
-    static SecureFreeCallback secureFreeCallback;
+    static void* SecAllocBytes(size_t nBytes);
 };
 } // end namespace bls
 #endif  // SRC_BLSUTIL_HPP_

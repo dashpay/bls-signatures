@@ -14,6 +14,7 @@
 
 #include <cstring>
 #include "bls.hpp"
+#include "secure.h"
 
 namespace bls {
 
@@ -21,11 +22,11 @@ ExtendedPrivateKey ExtendedPrivateKey::FromSeed(const Bytes& bytes) {
     // "BLS HD seed" in ascii
     const uint8_t prefix[] = {66, 76, 83, 32, 72, 68, 32, 115, 101, 101, 100};
 
-    uint8_t* hashInput = Util::SecAlloc<uint8_t>(bytes.size() + 1);
+    uint8_t* hashInput = util::SecAlloc<uint8_t>(bytes.size() + 1);
     std::memcpy(hashInput, bytes.begin(), bytes.size());
 
     // 32 bytes for secret key, and 32 bytes for chaincode
-    uint8_t* ILeft = Util::SecAlloc<uint8_t>(
+    uint8_t* ILeft = util::SecAlloc<uint8_t>(
             PrivateKey::PRIVATE_KEY_SIZE);
     uint8_t IRight[ChainCode::SIZE];
 
@@ -41,8 +42,8 @@ ExtendedPrivateKey ExtendedPrivateKey::FromSeed(const Bytes& bytes) {
                            ChainCode::FromBytes(Bytes(IRight, ChainCode::SIZE)),
                            PrivateKey::FromBytes(Bytes(ILeft, PrivateKey::PRIVATE_KEY_SIZE), true));
 
-    Util::SecFree(ILeft);
-    Util::SecFree(hashInput);
+    util::SecFree(ILeft, PrivateKey::PRIVATE_KEY_SIZE);
+    util::SecFree(hashInput, bytes.size() + 1);
     return esk;
 }
 
@@ -68,7 +69,7 @@ ExtendedPrivateKey ExtendedPrivateKey::PrivateChild(uint32_t i, const bool fLega
     uint32_t cmp = (1 << 31);
     bool hardened = i >= cmp;
 
-    uint8_t* ILeft = Util::SecAlloc<uint8_t>(PrivateKey::PRIVATE_KEY_SIZE);
+    uint8_t* ILeft = util::SecAlloc<uint8_t>(PrivateKey::PRIVATE_KEY_SIZE);
     uint8_t IRight[ChainCode::SIZE];
 
     // Chain code is used as hmac key
@@ -78,7 +79,7 @@ ExtendedPrivateKey ExtendedPrivateKey::PrivateChild(uint32_t i, const bool fLega
     size_t inputLen = hardened ? PrivateKey::PRIVATE_KEY_SIZE + 4 + 1
                                 : G1Element::SIZE + 4 + 1;
     // Hmac input includes sk or pk, int i, and byte with 0 or 1
-    uint8_t* hmacInput = Util::SecAlloc<uint8_t>(inputLen);
+    uint8_t* hmacInput = util::SecAlloc<uint8_t>(inputLen);
 
     // Fill the input with the required data
     if (hardened) {
@@ -107,8 +108,8 @@ ExtendedPrivateKey ExtendedPrivateKey::PrivateChild(uint32_t i, const bool fLega
                            ChainCode::FromBytes(Bytes(IRight, ChainCode::SIZE)),
                            newSk);
 
-    Util::SecFree(ILeft);
-    Util::SecFree(hmacInput);
+    util::SecFree(ILeft, PrivateKey::PRIVATE_KEY_SIZE);
+    util::SecFree(hmacInput, inputLen);
 
     return esk;
 }
