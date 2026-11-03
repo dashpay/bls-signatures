@@ -174,7 +174,6 @@ TEST_CASE("class PrivateKey")
         G2Element g2 = pk1.GetG2Element();
         PrivateKey pk2 = std::move(pk1);
         REQUIRE_THROWS(PrivateKey(pk1));
-        REQUIRE_THROWS(pk1 = pk2);
         REQUIRE_THROWS(pk1.GetG1Element());
         REQUIRE_THROWS(pk1.GetG2Element());
         REQUIRE_THROWS(g1 * pk1);
@@ -190,6 +189,10 @@ TEST_CASE("class PrivateKey")
         REQUIRE_THROWS(pk1.Serialize());
         REQUIRE_THROWS(
             pk1.SignG2(buffer, sizeof(buffer), buffer, sizeof(buffer)));
+
+        // A moved-from key can still be given a value.
+        REQUIRE_NOTHROW(pk1 = pk2);
+        REQUIRE(pk1 == pk2);
     }
 }
 

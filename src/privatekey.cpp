@@ -118,10 +118,12 @@ void PrivateKey::InvalidateCaches()
 
 PrivateKey &PrivateKey::operator=(const PrivateKey &other)
 {
-    CheckKeyData();
     other.CheckKeyData();
     if (this == &other) {
         return *this;
+    }
+    if (keydata == nullptr) {
+        AllocateKeyData();
     }
     InvalidateCaches();
     memcpy(keydata, other.keydata, sizeof(blst_scalar));
