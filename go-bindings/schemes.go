@@ -291,8 +291,10 @@ func (s *AugSchemeMPL) Sign(sk *PrivateKey, msg []byte) *G2Element {
 // SignPrepend is used for prepending different message
 // this method is a binding of bls::AugSchemeMPL::Sign
 func (s *AugSchemeMPL) SignPrepend(sk *PrivateKey, msg []byte, prepPk *G1Element) *G2Element {
+	cMsgPtr := C.CBytes(msg)
+	defer C.free(cMsgPtr)
 	sig := G2Element{
-		val: C.CAugSchemeMPLSignPrepend(s.val, sk.val, C.CBytes(msg), C.size_t(len(msg)), prepPk.val),
+		val: C.CAugSchemeMPLSignPrepend(s.val, sk.val, cMsgPtr, C.size_t(len(msg)), prepPk.val),
 	}
 	runtime.SetFinalizer(&sig, func(sig *G2Element) { sig.free() })
 	runtime.KeepAlive(s)
