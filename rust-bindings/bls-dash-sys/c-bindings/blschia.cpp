@@ -22,7 +22,7 @@
 
 // TODO: Revisit
 
-std::string gErrMsg;
+thread_local std::string gErrMsg;
 
 void SecFree(void *p, size_t nBytes) {
     bls::util::SecFree(p, nBytes);
